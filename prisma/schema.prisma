@@ -1,11 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  output   = "../src/generated/prisma/client"
 }
 
 datasource db {
@@ -13,9 +8,629 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                       String               @id @default(cuid())
+  email                    String               @unique
+  name                     String
+  passwordHash             String
+  role                     String
+  cooperativeId            String?
+  farmId                   String?
+  phone                    String?
+  avatarInitials           String?
+  isActive                 Boolean              @default(true)
+  cooperative              Cooperative?         @relation("CooperativeMembers", fields: [cooperativeId], references: [id])
+  farm                     Farm?                @relation("FarmUsers", fields: [farmId], references: [id])
+  administeredCooperatives Cooperative[]        @relation("CooperativeAdmin")
+  proposals                Proposal[]           @relation("ProposalCreator")
+  votes                    Vote[]
+  orders                   Order[]              @relation("OrderBuyer")
+  sentMessages             Message[]            @relation("MessageSender")
+  simulationScenarios      SimulationScenario[] @relation("ScenarioCreator")
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  @@index([cooperativeId])
+  @@index([farmId])
+}
+
+model Cooperative {
+  id                    String                 @id @default(cuid())
+  name                  String
+  region                String
+  province              String
+  memberCount           Int
+  plan                  String
+  adminUserId           String?
+  adminUser             User?                  @relation("CooperativeAdmin", fields: [adminUserId], references: [id])
+  members               User[]                 @relation("CooperativeMembers")
+  farms                 Farm[]
+  esgIndicators         ESGIndicator[]
+  seasonalWorkers       SeasonalWorker[]
+  proposals             Proposal[]
+  communicationChannels CommunicationChannel[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([adminUserId])
+}
+
+model Farm {
+  id                 String               @id @default(cuid())
+  name               String
+  location           String
+  province           String
+  hectares           Float
+  specialty          String
+  cooperativeId      String
+  cooperative        Cooperative          @relation(fields: [cooperativeId], references: [id])
+  users              User[]               @relation("FarmUsers")
+  fields             Field[]
+  costEntries        CostEntry[]
+  revenueEntries     RevenueEntry[]
+  carbonEntries      CarbonEntry[]
+  equipment          Equipment[]
+  marketplaceProducts MarketplaceProduct[]
+  insurancePolicies  InsurancePolicy[]
+  benchmarks         FarmBenchmark[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([cooperativeId])
+}
+
+model Field {
+  id                  String               @id @default(cuid())
+  name                String
+  crop                String
+  areaHa              Float
+  status              String
+  plantingDate        DateTime
+  municipality        String
+  expectedHarvest     DateTime
+  expectedVolume      Float
+  health              String
+  irrigation          String
+  notes               String
+  farmId              String
+  farm                Farm                 @relation(fields: [farmId], references: [id])
+  complianceRecords   ComplianceRecord[]
+  complianceEvents    ComplianceEvent[]
+  productLots         ProductLot[]
+  sensorDevices       SensorDevice[]
+  ndviReadings        NDVIReading[]
+  costEntries         CostEntry[]
+  carbonEntries       CarbonEntry[]
+  harvestDeclarations HarvestDeclaration[]
+  irrigationSchedules IrrigationSchedule[]
+  soilAnalyses        SoilAnalysis[]
+  sprayPrescriptions  SprayPrescription[]
+  workShifts          WorkShift[]
+  yieldPredictions    YieldPrediction[]
+  simulationScenarios SimulationScenario[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([farmId])
+}
+
+model ComplianceRecord {
+  id            String            @id @default(cuid())
+  fieldId       String
+  type          String
+  status        String
+  title         String
+  description   String
+  dueDate       DateTime
+  completedDate DateTime?
+  documents     Json
+  agencyRef     String?
+  field         Field             @relation(fields: [fieldId], references: [id])
+  events        ComplianceEvent[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([fieldId])
+}
+
+model ComplianceEvent {
+  id          String           @id @default(cuid())
+  recordId    String
+  fieldId     String
+  type        String
+  date        DateTime
+  description String
+  operator    String
+  product     String?
+  quantity    String?
+  notes       String
+  verified    Boolean          @default(false)
+  record      ComplianceRecord @relation(fields: [recordId], references: [id])
+  field       Field            @relation(fields: [fieldId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([recordId])
+  @@index([fieldId])
+}
+
+model ProductLot {
+  id                String              @id @default(cuid())
+  product           String
+  variety           String
+  harvestDate       DateTime
+  fieldId           String
+  quantity          Float
+  unit              String
+  status            String
+  certifications    Json
+  field             Field               @relation(fields: [fieldId], references: [id])
+  traceabilityEvents TraceabilityEvent[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([fieldId])
+}
+
+model TraceabilityEvent {
+  id        String     @id @default(cuid())
+  lotId     String
+  type      String
+  timestamp DateTime
+  location  String
+  operator  String
+  details   String
+  verified  Boolean    @default(false)
+  lot       ProductLot @relation(fields: [lotId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([lotId])
+}
+
+model SensorDevice {
+  id             String          @id @default(cuid())
+  name           String
+  type           String
+  fieldId        String
+  status         String
+  lastReading    DateTime?
+  batteryLevel   Int
+  firmware       String
+  field          Field           @relation(fields: [fieldId], references: [id])
+  sensorReadings SensorReading[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([fieldId])
+}
+
+model SensorReading {
+  id        String       @id @default(cuid())
+  sensorId  String
+  timestamp DateTime
+  value     Float
+  unit      String
+  quality   String?
+  sensor    SensorDevice @relation(fields: [sensorId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([sensorId])
+}
+
+model NDVIReading {
+  id           String   @id @default(cuid())
+  fieldId       String
+  date          DateTime
+  ndviValue     Float
+  healthStatus  String
+  cloudCover    Float
+  satellite     String
+  field         Field    @relation(fields: [fieldId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model CostEntry {
+  id          String   @id @default(cuid())
+  farmId       String
+  category     String
+  description  String
+  amount       Float
+  date         DateTime
+  fieldId      String?
+  farm         Farm     @relation(fields: [farmId], references: [id])
+  field        Field?   @relation(fields: [fieldId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([farmId])
+  @@index([fieldId])
+}
+
+model RevenueEntry {
+  id          String   @id @default(cuid())
+  farmId       String
+  source       String
+  description  String
+  amount       Float
+  date         DateTime
+  farm         Farm     @relation(fields: [farmId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([farmId])
+}
+
+model CarbonEntry {
+  id          String   @id @default(cuid())
+  farmId       String
+  type         String
+  category     String
+  description  String
+  co2Kg        Float
+  date         DateTime
+  fieldId      String?
+  verified     Boolean  @default(false)
+  farm         Farm     @relation(fields: [farmId], references: [id])
+  field        Field?   @relation(fields: [fieldId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([farmId])
+  @@index([fieldId])
+}
+
+model ESGIndicator {
+  id            String      @id @default(cuid())
+  cooperativeId String
+  category      String
+  name          String
+  value         Float
+  unit          String
+  period        String
+  target        Float
+  cooperative   Cooperative @relation(fields: [cooperativeId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([cooperativeId])
+}
+
+model HarvestDeclaration {
+  id            String   @id @default(cuid())
+  fieldId        String
+  estimatedDate  DateTime
+  estimatedKg    Float
+  actualKg       Float?
+  status         String
+  quality        String?
+  notes          String?
+  field          Field    @relation(fields: [fieldId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model SupplyChainLot {
+  id            String   @id @default(cuid())
+  product       String
+  origin        String
+  destination   String
+  status        String
+  quantity      Float
+  departureDate DateTime
+  arrivalDate   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model IrrigationSchedule {
+  id         String   @id @default(cuid())
+  fieldId     String
+  method      String
+  startDate   DateTime
+  endDate     DateTime
+  waterMm     Float
+  status      String
+  frequency   String
+  field       Field    @relation(fields: [fieldId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model SoilAnalysis {
+  id            String   @id @default(cuid())
+  fieldId        String
+  date           DateTime
+  ph             Float
+  organicMatter  Float
+  nitrogen       Float
+  phosphorus     Float
+  potassium      Float
+  texture        String
+  notes          String?
+  field          Field    @relation(fields: [fieldId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model DiseaseRisk {
+  id              String   @id @default(cuid())
+  disease         String
+  crop            String
+  riskLevel       String
+  region          String
+  detectedDate    DateTime
+  recommendations Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SprayPrescription {
+  id              String   @id @default(cuid())
+  fieldId          String
+  product          String
+  dosage           String
+  applicationDate  DateTime
+  status           String
+  operator         String
+  weatherOk        Boolean  @default(true)
+  field            Field    @relation(fields: [fieldId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model Equipment {
+  id                String             @id @default(cuid())
+  name              String
+  type              String
+  status            String
+  farmId            String
+  lastMaintenance   DateTime?
+  nextMaintenance   DateTime?
+  hoursUsed         Float
+  farm              Farm               @relation(fields: [farmId], references: [id])
+  maintenanceEvents MaintenanceEvent[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([farmId])
+}
+
+model MaintenanceEvent {
+  id          String    @id @default(cuid())
+  equipmentId String
+  date        DateTime
+  type        String
+  description String
+  cost        Float
+  technician  String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([equipmentId])
+}
+
+model SeasonalWorker {
+  id             String      @id @default(cuid())
+  name           String
+  role           String
+  cooperativeId  String
+  startDate      DateTime
+  endDate        DateTime
+  status         String
+  certifications Json
+  cooperative    Cooperative @relation(fields: [cooperativeId], references: [id])
+  workShifts     WorkShift[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([cooperativeId])
+}
+
+model WorkShift {
+  id          String         @id @default(cuid())
+  workerId    String
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime
+  fieldId     String
+  task        String
+  hoursWorked Float
+  worker      SeasonalWorker @relation(fields: [workerId], references: [id])
+  field       Field          @relation(fields: [fieldId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([workerId])
+  @@index([fieldId])
+}
+
+model Proposal {
+  id            String      @id @default(cuid())
+  cooperativeId String
+  title         String
+  description   String
+  status        String
+  createdBy     String
+  createdAt     DateTime    @default(now())
+  votesFor      Int         @default(0)
+  votesAgainst  Int         @default(0)
+  cooperative   Cooperative @relation(fields: [cooperativeId], references: [id])
+  creator       User        @relation("ProposalCreator", fields: [createdBy], references: [id])
+  votes         Vote[]
+  updatedAt     DateTime    @updatedAt
+
+  @@index([cooperativeId])
+  @@index([createdBy])
+}
+
+model Vote {
+  id         String   @id @default(cuid())
+  proposalId String
+  userId     String
+  vote       String
+  timestamp  DateTime
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([proposalId])
+  @@index([userId])
+}
+
+model MarketplaceProduct {
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  price      Float
+  unit       String
+  farmId     String
+  available  Boolean  @default(true)
+  organic    Boolean  @default(false)
+  farm       Farm     @relation(fields: [farmId], references: [id])
+  orders     Order[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([farmId])
+}
+
+model Order {
+  id         String             @id @default(cuid())
+  productId  String
+  buyerId    String
+  quantity   Float
+  totalPrice Float
+  status     String
+  orderDate  DateTime
+  product    MarketplaceProduct @relation(fields: [productId], references: [id])
+  buyer      User               @relation("OrderBuyer", fields: [buyerId], references: [id])
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([productId])
+  @@index([buyerId])
+}
+
+model InsurancePolicy {
+  id             String   @id @default(cuid())
+  farmId         String
+  type           String
+  provider       String
+  coverageAmount Float
+  premium        Float
+  startDate      DateTime
+  endDate        DateTime
+  status         String
+  farm           Farm     @relation(fields: [farmId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([farmId])
+}
+
+model CommunicationChannel {
+  id            String      @id @default(cuid())
+  name          String
+  type          String
+  cooperativeId String
+  memberCount   Int
+  cooperative   Cooperative @relation(fields: [cooperativeId], references: [id])
+  messages      Message[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([cooperativeId])
+}
+
+model Message {
+  id         String               @id @default(cuid())
+  channelId  String
+  senderId   String
+  content    String
+  timestamp  DateTime
+  readBy     Json
+  channel    CommunicationChannel @relation(fields: [channelId], references: [id])
+  sender     User                 @relation("MessageSender", fields: [senderId], references: [id])
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([channelId])
+  @@index([senderId])
+}
+
+model FarmBenchmark {
+  id              String   @id @default(cuid())
+  farmId          String
+  period          String
+  yieldPerHa      Float
+  costPerHa       Float
+  waterEfficiency Float
+  carbonPerHa     Float
+  overallScore    Float
+  farm            Farm     @relation(fields: [farmId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([farmId])
+}
+
+model YieldPrediction {
+  id             String   @id @default(cuid())
+  fieldId        String
+  crop           String
+  predictedYield Float
+  confidenceLow  Float
+  confidenceHigh Float
+  predictionDate DateTime
+  factors        Json
+  field          Field    @relation(fields: [fieldId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([fieldId])
+}
+
+model RegulatoryUpdate {
+  id            String   @id @default(cuid())
+  title         String
+  source        String
+  category      String
+  publishDate   DateTime
+  effectiveDate DateTime
+  summary       String
+  impact        String
+  url           String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SimulationScenario {
+  id         String   @id @default(cuid())
+  name       String
+  fieldId    String
+  type       String
+  parameters Json
+  results    Json?
+  createdAt  DateTime @default(now())
+  createdBy  String
+  field      Field    @relation(fields: [fieldId], references: [id])
+  creator    User     @relation("ScenarioCreator", fields: [createdBy], references: [id])
+  updatedAt  DateTime @updatedAt
+
+  @@index([fieldId])
+  @@index([createdBy])
 }
