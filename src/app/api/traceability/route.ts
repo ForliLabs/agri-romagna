@@ -1,4 +1,5 @@
-import { lotsStore, buildDPP } from "@/lib/traceability-data";
+import { buildDPP } from "@/lib/traceability-data";
+import { productLotQueries } from "@/lib/data-layer";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -12,6 +13,6 @@ export async function GET(request: Request) {
     return Response.json(dpp);
   }
 
-  const lots = await lotsStore.findAll();
+  const lots = await productLotQueries.findAll();
   return Response.json({ lots });
 }

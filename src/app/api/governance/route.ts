@@ -1,4 +1,3 @@
-import type { Proposal, ProposalCategory, ProposalStatus } from "@/lib/governance-data";
 import {
   agmEventsStore,
   bylawsStore,
@@ -6,19 +5,11 @@ import {
   getProposals,
   getVotingResults,
   memberProfilesStore,
-  proposalsStore,
 } from "@/lib/governance-data";
-
-const proposalStatuses: ProposalStatus[] = ["draft", "open", "voting", "approved", "rejected"];
-const proposalCategories: ProposalCategory[] = [
-  "operational",
-  "financial",
-  "regulatory",
-  "strategic",
-];
+import { proposalQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const proposals = await proposalsStore.findAll();
+  const proposals = await proposalQueries.findAll();
   const agmCalendar = await agmEventsStore.findAll();
   const memberProfiles = await memberProfilesStore.findAll();
   const bylaws = await bylawsStore.findAll();
@@ -30,7 +21,7 @@ export async function GET() {
     memberProfiles,
     bylaws,
     proposalTimeline: getProposals(),
-    votingResults: proposals.map((proposal) => ({
+    votingResults: (proposals as any[]).map((proposal: any) => ({
       proposalId: proposal.id,
       ...getVotingResults(proposal.id),
     })),
@@ -38,42 +29,25 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = (await request.json()) as Partial<Proposal>;
+  const payload = await request.json();
 
-  if (
-    !payload.title ||
-    !payload.description ||
-    !payload.proposedBy ||
-    !payload.category ||
-    !payload.votingDeadline
-  ) {
+  if (!payload.title || !payload.description || !payload.proposedBy) {
     return Response.json(
-      {
-        error: "Campi richiesti: title, description, proposedBy, category, votingDeadline.",
-      },
+      { error: "Campi richiesti: title, description, proposedBy." },
       { status: 400 }
     );
   }
 
-  if (!proposalCategories.includes(payload.category)) {
-    return Response.json({ error: "Categoria proposta non valida." }, { status: 400 });
-  }
-
-  if (payload.status && !proposalStatuses.includes(payload.status)) {
-    return Response.json({ error: "Stato proposta non valido." }, { status: 400 });
-  }
-
-  const proposal: Proposal = {
+  const proposal = await proposalQueries.create({
     id: payload.id ?? `proposal-${crypto.randomUUID()}`,
+    cooperativeId: payload.cooperativeId ?? "coop-romagna-unita",
     title: payload.title,
     description: payload.description,
-    proposedBy: payload.proposedBy,
     status: payload.status ?? "draft",
-    category: payload.category,
-    createdAt: payload.createdAt ?? new Date().toISOString(),
-    votingDeadline: payload.votingDeadline,
-  };
+    createdBy: payload.proposedBy,
+    votesFor: 0,
+    votesAgainst: 0,
+  });
 
-  const createdProposal = await proposalsStore.create(proposal);
-  return Response.json({ proposal: createdProposal }, { status: 201 });
+  return Response.json({ proposal }, { status: 201 });
 }

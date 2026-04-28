@@ -6,17 +6,20 @@ import {
   transitionLot,
   type LotLifecycle,
 } from "@/lib/supply-chain-data";
+import { supplyChainLotQueries } from "@/lib/data-layer";
 
-function getPayload() {
+async function getPayload() {
+  const dbLots = (await supplyChainLotQueries.findAll()) as any[];
+  const lots = dbLots.length > 0 ? dbLots : supplyChainLots;
   return {
     summary: getSupplyChainSummary(),
-    lots: supplyChainLots,
+    lots,
     timelines: Object.fromEntries(supplyChainLots.map((lot) => [lot.id, getLotTimeline(lot.id)])),
   };
 }
 
 export async function GET() {
-  return Response.json(getPayload());
+  return Response.json(await getPayload());
 }
 
 export async function POST(request: Request) {
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
 
       const lot = transitionLot(body.lotId, body.toStatus);
       return Response.json({
-        ...getPayload(),
+        ...(await getPayload()),
         updatedLot: lot,
         timeline: getLotTimeline(body.lotId),
       });
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
 
     const result = processHarvestDeclaration(body);
     return Response.json({
-      ...getPayload(),
+      ...(await getPayload()),
       createdLot: result.lot,
       timeline: result.timeline,
     });

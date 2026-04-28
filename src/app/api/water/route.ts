@@ -1,4 +1,3 @@
-import type { IrrigationSchedule, IrrigationStatus } from "@/lib/water-management-data";
 import { fields } from "@/lib/data";
 import {
   calculateCropWaterNeed,
@@ -6,15 +5,13 @@ import {
   getIrrigationRecommendation,
   getWaterEfficiencyMetrics,
   getWaterQuotaStatus,
-  irrigationSchedulesStore,
   soilWaterBalanceStore,
   waterQuotasStore,
 } from "@/lib/water-management-data";
-
-const irrigationStatuses: IrrigationStatus[] = ["scheduled", "completed", "skipped"];
+import { irrigationScheduleQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const schedules = await irrigationSchedulesStore.findAll();
+  const schedules = await irrigationScheduleQueries.findAll();
   const balances = await soilWaterBalanceStore.findAll();
   const quotas = await waterQuotasStore.findAll();
 
@@ -24,9 +21,7 @@ export async function GET() {
     balances,
     quotas,
     quotaStatus: getWaterQuotaStatus(),
-    cropWaterNeeds: fields
-      .map((field) => calculateCropWaterNeed(field.id))
-      .filter(Boolean),
+    cropWaterNeeds: fields.map((field) => calculateCropWaterNeed(field.id)).filter(Boolean),
     recommendations: fields
       .map((field) => getIrrigationRecommendation(field.id))
       .filter(Boolean),
@@ -35,38 +30,25 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = (await request.json()) as Partial<IrrigationSchedule>;
+  const payload = await request.json();
 
-  if (
-    !payload.fieldId ||
-    !payload.date ||
-    typeof payload.recommendedMm !== "number" ||
-    typeof payload.actualMm !== "number" ||
-    !payload.method ||
-    !payload.status
-  ) {
+  if (!payload.fieldId || !payload.startDate || !payload.method) {
     return Response.json(
-      {
-        error: "Campi richiesti: fieldId, date, recommendedMm, actualMm, method, status.",
-      },
+      { error: "Campi richiesti: fieldId, startDate, method." },
       { status: 400 }
     );
   }
 
-  if (!irrigationStatuses.includes(payload.status)) {
-    return Response.json({ error: "Stato irrigazione non valido." }, { status: 400 });
-  }
-
-  const schedule: IrrigationSchedule = {
+  const schedule = await irrigationScheduleQueries.create({
     id: payload.id ?? `irrigation-${crypto.randomUUID()}`,
     fieldId: payload.fieldId,
-    date: payload.date,
-    recommendedMm: payload.recommendedMm,
-    actualMm: payload.actualMm,
     method: payload.method,
-    status: payload.status,
-  };
+    startDate: new Date(payload.startDate ?? payload.date),
+    endDate: new Date(payload.endDate ?? payload.date ?? payload.startDate),
+    waterMm: payload.actualMm ?? payload.waterMm ?? 0,
+    status: payload.status ?? "scheduled",
+    frequency: payload.frequency ?? "once",
+  });
 
-  const createdSchedule = await irrigationSchedulesStore.create(schedule);
-  return Response.json({ schedule: createdSchedule }, { status: 201 });
+  return Response.json({ schedule }, { status: 201 });
 }

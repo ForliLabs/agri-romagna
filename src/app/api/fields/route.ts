@@ -1,12 +1,13 @@
-import { farm, fieldsStore, type Field } from "@/lib/data";
+import { farm } from "@/lib/data";
+import { fieldQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const fields = await fieldsStore.findAll();
+  const fields = await fieldQueries.findAll();
   return Response.json({ farm, fields });
 }
 
 export async function POST(request: Request) {
-  const payload = (await request.json()) as Partial<Field>;
+  const payload = await request.json();
 
   if (
     !payload.name ||
@@ -16,14 +17,12 @@ export async function POST(request: Request) {
     !payload.plantingDate
   ) {
     return Response.json(
-      {
-        error: "Campi richiesti: name, crop, areaHa, status, plantingDate.",
-      },
+      { error: "Campi richiesti: name, crop, areaHa, status, plantingDate." },
       { status: 400 }
     );
   }
 
-  const field: Field = {
+  const field = await fieldQueries.create({
     id: payload.id ?? `field-${crypto.randomUUID()}`,
     name: payload.name,
     crop: payload.crop,
@@ -36,8 +35,8 @@ export async function POST(request: Request) {
     health: payload.health ?? "Monitoraggio iniziale impostato",
     irrigation: payload.irrigation ?? "Da configurare",
     notes: payload.notes ?? "Nuovo appezzamento registrato via API.",
-  };
+    farmId: payload.farmId ?? "azienda-tondini",
+  });
 
-  const createdField = await fieldsStore.create(field);
-  return Response.json({ field: createdField }, { status: 201 });
+  return Response.json({ field }, { status: 201 });
 }

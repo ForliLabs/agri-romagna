@@ -4,9 +4,13 @@ import {
   publishSensorReadings,
   publishWeatherUpdate,
 } from "@/lib/intelligence-fabric";
+import { getEventBusOverview } from "@/lib/event-bus";
 
 export async function GET() {
-  return Response.json(getIntelligenceOverview());
+  return Response.json({
+    ...getIntelligenceOverview(),
+    crossModuleEventBus: getEventBusOverview(),
+  });
 }
 
 export async function POST() {
@@ -14,5 +18,8 @@ export async function POST() {
   publishSensorReadings();
   publishNDVIData();
 
-  return Response.json(getIntelligenceOverview());
+  return Response.json({
+    ...getIntelligenceOverview(),
+    crossModuleEventBus: getEventBusOverview(),
+  });
 }
