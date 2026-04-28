@@ -8,6 +8,7 @@ import {
   CloudSun,
   Crosshair,
   Cog,
+  Gauge,
   Network,
   Dices,
   Droplets,
@@ -94,6 +95,7 @@ export default function DashboardLayout({
         { label: "Knowledge Graph", href: "/dashboard/knowledge-graph", icon: <BrainCircuit /> },
         { label: "Anomalie & previsioni", href: "/dashboard/anomaly-detection", icon: <ScanSearch /> },
         { label: "Federazione", href: "/dashboard/federation", icon: <Network /> },
+        { label: "Analytics", href: "/dashboard/analytics", icon: <Gauge /> },
       ]}
     >
       {children}
