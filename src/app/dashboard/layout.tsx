@@ -29,6 +29,7 @@ import {
   Package,
   QrCode,
   Radio,
+  Rocket,
   Route,
   Satellite,
   ScanSearch,
@@ -95,6 +96,7 @@ export default function DashboardLayout({
         { label: "Knowledge Graph", href: "/dashboard/knowledge-graph", icon: <BrainCircuit /> },
         { label: "Anomalie & previsioni", href: "/dashboard/anomaly-detection", icon: <ScanSearch /> },
         { label: "Federazione", href: "/dashboard/federation", icon: <Network /> },
+        { label: "Moonshots", href: "/dashboard/moonshots", icon: <Rocket /> },
         { label: "Analytics", href: "/dashboard/analytics", icon: <Gauge /> },
       ]}
     >
