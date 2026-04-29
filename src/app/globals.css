@@ -38,3 +38,21 @@ body {
 a {
   text-decoration: none;
 }
+
+/* Safe area support for bottom navigation on iOS */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Touch-friendly targets */
+@media (max-width: 1023px) {
+  button, a {
+    min-height: 44px;
+  }
+}
+
+/* Responsive table overflow */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
