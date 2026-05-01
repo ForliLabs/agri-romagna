@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/sw-register";
+import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -61,8 +62,18 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground selection:bg-emerald-200 selection:text-emerald-950">
-        <ServiceWorkerRegistration />
-        {children}
+        <a
+          href="#main-content"
+          className="skip-link fixed left-4 top-4 z-[110] -translate-y-20 rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white shadow-lg transition focus:translate-y-0"
+        >
+          Vai al contenuto principale
+        </a>
+        <ToastProvider>
+          <ServiceWorkerRegistration />
+          <div id="main-content" tabIndex={-1}>
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );
