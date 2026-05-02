@@ -32,8 +32,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <div className="mb-2 text-2xl">⚠️</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
+          <div className="mb-2 text-2xl" aria-hidden="true">⚠️</div>
           <h3 className="text-lg font-semibold text-red-800">
             {this.props.moduleName
               ? `Errore nel modulo: ${this.props.moduleName}`
@@ -67,10 +67,18 @@ export function ApiErrorToast({
   onDismiss: () => void;
 }) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-white px-4 py-3 shadow-lg">
-      <span className="text-red-500">✕</span>
+    <div
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-white px-4 py-3 shadow-lg"
+      role="alert"
+      aria-live="assertive"
+    >
+      <span className="text-red-500" aria-hidden="true">✕</span>
       <p className="text-sm text-gray-700">{message}</p>
-      <button onClick={onDismiss} className="text-gray-400 hover:text-gray-600">
+      <button
+        onClick={onDismiss}
+        className="text-gray-400 hover:text-gray-600"
+        aria-label="Chiudi notifica"
+      >
         ✕
       </button>
     </div>
