@@ -8,20 +8,17 @@ import {
   getFieldDiseaseRisks,
   treatmentRecommendationsStore,
 } from "@/lib/pest-warning-data";
-import { diseaseRiskQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const dbRisks = (await diseaseRiskQueries.findAll()) as any[];
-  const storeRisks = await diseaseRisksStore.findAll();
-  const risks = dbRisks.length > 0 ? dbRisks : storeRisks;
+  const risks = await diseaseRisksStore.findAll();
   const recommendations = await treatmentRecommendationsStore.findAll();
 
   return Response.json({
     risks,
-    activeWarnings: getActiveWarnings(storeRisks),
+    activeWarnings: getActiveWarnings(risks),
     fieldRisks: fields.map((field) => ({
       fieldId: field.id,
-      risks: getFieldDiseaseRisks(field.id, storeRisks),
+      risks: getFieldDiseaseRisks(field.id, risks),
     })),
     recommendations,
     models: diseaseModels,

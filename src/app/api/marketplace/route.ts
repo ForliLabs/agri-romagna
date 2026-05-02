@@ -1,20 +1,16 @@
-import { marketplaceProductQueries, orderQueries } from "@/lib/data-layer";
+import { ordersStore, productsStore } from "@/lib/marketplace-data";
 
 export async function GET() {
-  const products = await marketplaceProductQueries.findAll();
-  const orders = await orderQueries.findAll();
-  const totalRevenue = (orders as any[]).reduce(
-    (sum: number, o: any) => sum + (o.totalPrice || 0),
-    0
-  );
+  const [products, orders] = await Promise.all([productsStore.findAll(), ordersStore.findAll()]);
+  const totalRevenue = orders.reduce((sum, order) => sum + order.totalEur, 0);
 
   return Response.json({
     products,
     orders,
     summary: {
-      totalProducts: (products as any[]).length,
-      availableProducts: (products as any[]).filter((p: any) => p.available).length,
-      totalOrders: (orders as any[]).length,
+      totalProducts: products.length,
+      availableProducts: products.filter((product) => product.availability !== "esaurito").length,
+      totalOrders: orders.length,
       totalRevenue,
     },
   });

@@ -1,23 +1,35 @@
 import {
   calculateCarbonValue,
   calculateFieldCarbon,
+  carbonEntriesStore,
   emissionFactors,
   getCarbonByCategory,
   getCarbonComplianceReadiness,
   getCooperativeCarbonSummary,
   sequestrationFactors,
+  type CarbonCategory,
+  type CarbonEntry,
   type CarbonSource,
 } from "@/lib/carbon-data";
 import { fields } from "@/lib/data";
-import { carbonEntryQueries } from "@/lib/data-layer";
 
 const emissionSources = new Set<string>(emissionFactors.map((factor) => factor.key));
-const sequestrationSources = new Set<string>(
-  sequestrationFactors.map((factor) => factor.key)
-);
+const sequestrationSources = new Set<string>(sequestrationFactors.map((factor) => factor.key));
+
+type CarbonPayload = Partial<CarbonEntry> & {
+  fieldId?: string;
+  date?: string;
+  category?: CarbonCategory;
+  source?: CarbonSource;
+  quantity?: number;
+};
+
+async function getEntries() {
+  return carbonEntriesStore.findAll();
+}
 
 export async function GET() {
-  const entries = (await carbonEntryQueries.findAll()) as any[];
+  const entries = await getEntries();
 
   return Response.json({
     entries,
@@ -29,8 +41,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json();
-  const source = payload.source as CarbonSource | undefined;
+  const payload = (await request.json()) as CarbonPayload;
+  const source = payload.source;
 
   if (
     !payload.fieldId ||
@@ -64,24 +76,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const co2eKg =
-    typeof payload.co2eKg === "number"
-      ? payload.co2eKg
-      : calculateCarbonValue(source, payload.quantity);
-
-  const entry = await carbonEntryQueries.create({
+  const entry: CarbonEntry = {
     id: payload.id ?? `carbon-${crypto.randomUUID()}`,
-    farmId: payload.farmId ?? "azienda-tondini",
-    type: payload.category,
-    category: payload.category,
-    description: payload.description ?? source,
-    co2Kg: co2eKg,
-    date: new Date(payload.date),
     fieldId: payload.fieldId,
-    verified: false,
-  });
+    date: payload.date,
+    category: payload.category,
+    source,
+    quantity: payload.quantity,
+    unit: payload.unit ?? "unit",
+    co2eKg:
+      typeof payload.co2eKg === "number"
+        ? payload.co2eKg
+        : calculateCarbonValue(source, payload.quantity),
+  };
 
-  const entries = (await carbonEntryQueries.findAll()) as any[];
+  await carbonEntriesStore.create(entry);
+
+  const entries = await getEntries();
 
   return Response.json(
     {

@@ -1,20 +1,20 @@
 import {
   capDeclarations,
-  organicCertifications,
+  complianceEventsStore,
+  complianceRecordsStore,
   getComplianceSummary,
+  organicCertifications,
 } from "@/lib/compliance-data";
-import { complianceRecordQueries, complianceEventQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const records = await complianceRecordQueries.findAll();
-  const events = await complianceEventQueries.findAll();
-  const summary = getComplianceSummary(records as any);
+  const records = await complianceRecordsStore.findAll();
+  const events = await complianceEventsStore.findAll();
 
   return Response.json({
     records,
     events,
     capDeclarations,
     organicCertifications,
-    summary,
+    summary: getComplianceSummary(records),
   });
 }

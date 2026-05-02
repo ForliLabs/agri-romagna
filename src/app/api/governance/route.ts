@@ -5,11 +5,22 @@ import {
   getProposals,
   getVotingResults,
   memberProfilesStore,
+  proposalsStore,
+  type Proposal,
+  type ProposalCategory,
+  type ProposalStatus,
 } from "@/lib/governance-data";
-import { proposalQueries } from "@/lib/data-layer";
+
+type ProposalPayload = Partial<Proposal> & {
+  title?: string;
+  description?: string;
+  proposedBy?: string;
+  status?: ProposalStatus;
+  category?: ProposalCategory;
+};
 
 export async function GET() {
-  const proposals = await proposalQueries.findAll();
+  const proposals = await proposalsStore.findAll();
   const agmCalendar = await agmEventsStore.findAll();
   const memberProfiles = await memberProfilesStore.findAll();
   const bylaws = await bylawsStore.findAll();
@@ -21,7 +32,7 @@ export async function GET() {
     memberProfiles,
     bylaws,
     proposalTimeline: getProposals(),
-    votingResults: (proposals as any[]).map((proposal: any) => ({
+    votingResults: proposals.map((proposal) => ({
       proposalId: proposal.id,
       ...getVotingResults(proposal.id),
     })),
@@ -29,7 +40,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json();
+  const payload = (await request.json()) as ProposalPayload;
 
   if (!payload.title || !payload.description || !payload.proposedBy) {
     return Response.json(
@@ -38,16 +49,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const proposal = await proposalQueries.create({
+  const proposal: Proposal = {
     id: payload.id ?? `proposal-${crypto.randomUUID()}`,
-    cooperativeId: payload.cooperativeId ?? "coop-romagna-unita",
     title: payload.title,
     description: payload.description,
+    proposedBy: payload.proposedBy,
     status: payload.status ?? "draft",
-    createdBy: payload.proposedBy,
-    votesFor: 0,
-    votesAgainst: 0,
-  });
+    category: payload.category ?? "operational",
+    createdAt: payload.createdAt ?? new Date().toISOString(),
+    votingDeadline:
+      payload.votingDeadline ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+
+  await proposalsStore.create(proposal);
 
   return Response.json({ proposal }, { status: 201 });
 }

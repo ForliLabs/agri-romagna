@@ -1,15 +1,42 @@
 import {
   calculateFieldProfitability,
   calculateMemberSettlements,
+  costEntriesStore,
   getCashFlowProjection,
   getCooperativePL,
+  revenueEntriesStore,
+  type CostCategory,
+  type CostEntry,
+  type RevenueEntry,
+  type RevenueSource,
 } from "@/lib/financial-data";
 import { fields } from "@/lib/data";
-import { costEntryQueries, revenueEntryQueries } from "@/lib/data-layer";
+
+type FinancialPayload = {
+  type?: "cost" | "revenue";
+  id?: string;
+  fieldId?: string;
+  farmId?: string;
+  date?: string;
+  category?: CostCategory;
+  source?: RevenueSource;
+  description?: string;
+  amount?: number;
+  quantity?: number;
+  unit?: string;
+};
+
+async function getEntries() {
+  const [costs, revenues] = await Promise.all([
+    costEntriesStore.findAll(),
+    revenueEntriesStore.findAll(),
+  ]);
+
+  return { costs, revenues };
+}
 
 export async function GET() {
-  const costs = (await costEntryQueries.findAll()) as any[];
-  const revenues = (await revenueEntryQueries.findAll()) as any[];
+  const { costs, revenues } = await getEntries();
 
   return Response.json({
     costs,
@@ -24,7 +51,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json();
+  const payload = (await request.json()) as FinancialPayload;
 
   if (!payload.fieldId || !fields.some((field) => field.id === payload.fieldId)) {
     return Response.json({ error: "Campo non valido." }, { status: 400 });
@@ -46,18 +73,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const entry = await costEntryQueries.create({
+    const entry: CostEntry = {
       id: payload.id ?? `cost-${crypto.randomUUID()}`,
-      farmId: payload.farmId ?? "azienda-tondini",
+      fieldId: payload.fieldId,
+      date: payload.date,
       category: payload.category,
       description: payload.description,
       amount: payload.amount,
-      date: new Date(payload.date),
-      fieldId: payload.fieldId,
-    });
+      quantity: payload.quantity ?? 1,
+      unit: payload.unit ?? "unit",
+    };
 
-    const costs = (await costEntryQueries.findAll()) as any[];
-    const revenues = (await revenueEntryQueries.findAll()) as any[];
+    await costEntriesStore.create(entry);
+
+    const { costs, revenues } = await getEntries();
 
     return Response.json(
       {
@@ -85,17 +114,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const entry = await revenueEntryQueries.create({
+    const entry: RevenueEntry = {
       id: payload.id ?? `revenue-${crypto.randomUUID()}`,
-      farmId: payload.farmId ?? "azienda-tondini",
+      fieldId: payload.fieldId,
+      date: payload.date,
       source: payload.source,
       description: payload.description,
       amount: payload.amount,
-      date: new Date(payload.date),
-    });
+      quantity: payload.quantity ?? 1,
+    };
 
-    const costs = (await costEntryQueries.findAll()) as any[];
-    const revenues = (await revenueEntryQueries.findAll()) as any[];
+    await revenueEntriesStore.create(entry);
+
+    const { costs, revenues } = await getEntries();
 
     return Response.json(
       {

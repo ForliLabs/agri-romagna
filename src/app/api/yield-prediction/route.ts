@@ -1,30 +1,56 @@
 import {
   cropPhenologyModels,
-  getYieldPredictionSummary,
   predictYield,
-  yieldPredictions,
+  yieldPredictionsStore,
 } from "@/lib/yield-prediction";
-import { yieldPredictionQueries } from "@/lib/data-layer";
+
+type PredictionPayload = { fieldId?: string };
+
+async function getPredictions() {
+  return yieldPredictionsStore.findAll();
+}
 
 export async function GET() {
-  const dbPredictions = (await yieldPredictionQueries.findAll()) as any[];
+  const predictions = await getPredictions();
+
   return Response.json({
-    summary: getYieldPredictionSummary(),
-    predictions: dbPredictions.length > 0 ? dbPredictions : yieldPredictions,
+    summary: {
+      totalFields: predictions.length,
+      averageYieldKgHa: Math.round(
+        predictions.reduce((sum, prediction) => sum + prediction.predictedYieldKgHa, 0) /
+          Math.max(1, predictions.length)
+      ),
+      harvestReadySoon: predictions.filter((prediction) => prediction.gddProgressPercent >= 85)
+        .length,
+      fieldsWithElevatedRisk: predictions.filter((prediction) => prediction.riskFactors.length > 1)
+        .length,
+    },
+    predictions,
     models: cropPhenologyModels,
   });
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { fieldId?: string };
+  const body = (await request.json().catch(() => ({}))) as PredictionPayload;
 
   if (body.fieldId) {
     return Response.json({ prediction: predictYield(body.fieldId) });
   }
 
-  const dbPredictions = (await yieldPredictionQueries.findAll()) as any[];
+  const predictions = await getPredictions();
+
   return Response.json({
-    summary: getYieldPredictionSummary(),
-    predictions: dbPredictions.length > 0 ? dbPredictions : yieldPredictions,
+    summary: {
+      totalFields: predictions.length,
+      averageYieldKgHa: Math.round(
+        predictions.reduce((sum, prediction) => sum + prediction.predictedYieldKgHa, 0) /
+          Math.max(1, predictions.length)
+      ),
+      harvestReadySoon: predictions.filter((prediction) => prediction.gddProgressPercent >= 85)
+        .length,
+      fieldsWithElevatedRisk: predictions.filter((prediction) => prediction.riskFactors.length > 1)
+        .length,
+    },
+    predictions,
   });
 }

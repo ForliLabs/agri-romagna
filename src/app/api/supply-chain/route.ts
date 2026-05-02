@@ -2,19 +2,18 @@ import {
   getLotTimeline,
   getSupplyChainSummary,
   processHarvestDeclaration,
-  supplyChainLots,
+  supplyChainLotsStore,
   transitionLot,
+  type HarvestDeclarationPayload,
   type LotLifecycle,
 } from "@/lib/supply-chain-data";
-import { supplyChainLotQueries } from "@/lib/data-layer";
 
 async function getPayload() {
-  const dbLots = (await supplyChainLotQueries.findAll()) as any[];
-  const lots = dbLots.length > 0 ? dbLots : supplyChainLots;
+  const lots = await supplyChainLotsStore.findAll();
   return {
     summary: getSupplyChainSummary(),
     lots,
-    timelines: Object.fromEntries(supplyChainLots.map((lot) => [lot.id, getLotTimeline(lot.id)])),
+    timelines: Object.fromEntries(lots.map((lot) => [lot.id, getLotTimeline(lot.id)])),
   };
 }
 
@@ -30,14 +29,7 @@ export async function POST(request: Request) {
           lotId?: string;
           toStatus?: LotLifecycle;
         }
-      | {
-          fieldId: string;
-          crop: string;
-          harvestDate: string;
-          quantity: number;
-          qualityGrade: string;
-          autoAdvanceTo?: LotLifecycle;
-        };
+      | HarvestDeclarationPayload;
 
     if ("action" in body && body.action === "transition") {
       if (!body.lotId || !body.toStatus) {

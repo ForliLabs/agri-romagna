@@ -1,13 +1,13 @@
 import {
-  sensorReadings,
   alertRules,
-  sensorAlerts,
   getLatestReadings,
+  sensorAlerts,
+  sensorReadings,
+  sensorsStore,
 } from "@/lib/iot-data";
-import { sensorDeviceQueries } from "@/lib/data-layer";
 
 export async function GET() {
-  const devices = await sensorDeviceQueries.findAll();
+  const devices = await sensorsStore.findAll();
   const latestMap = getLatestReadings();
   const latest = Object.fromEntries(latestMap);
 
@@ -17,11 +17,11 @@ export async function GET() {
     alertRules,
     alerts: sensorAlerts,
     stats: {
-      totalDevices: (devices as any[]).length,
-      online: (devices as any[]).filter((d: any) => d.status === "online").length,
-      offline: (devices as any[]).filter((d: any) => d.status === "offline").length,
-      warnings: (devices as any[]).filter(
-        (d: any) => d.status === "warning" || d.status === "error"
+      totalDevices: devices.length,
+      online: devices.filter((device) => device.status === "online").length,
+      offline: devices.filter((device) => device.status === "offline").length,
+      warnings: devices.filter(
+        (device) => device.status === "warning" || device.status === "error"
       ).length,
       totalReadings: sensorReadings.length,
     },
