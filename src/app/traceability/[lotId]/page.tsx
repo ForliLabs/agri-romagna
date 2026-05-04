@@ -7,9 +7,9 @@ import {
   Calendar,
   Shield,
   ArrowLeft,
-  QrCode,
   Sprout,
 } from "lucide-react";
+import { QrBadge } from "@/components/qr-badge";
 import { buildDPP, productLots } from "@/lib/traceability-data";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -64,9 +64,7 @@ export default async function TraceabilityPublicPage({
               <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{dpp.product}</h1>
               <p className="mt-1 text-base text-emerald-100/80">{dpp.variety}</p>
             </div>
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
-              <QrCode className="h-8 w-8" />
-            </div>
+            <QrBadge value={dpp.lotCode} className="h-16 w-16 border-white/20 bg-white/10 p-2" />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-mono font-semibold">
@@ -116,14 +114,14 @@ export default async function TraceabilityPublicPage({
         <section className="mt-8">
           <h2 className="text-xl font-bold text-emerald-950">Percorso di filiera</h2>
           <p className="mt-1 text-sm text-emerald-950/60">Ogni passaggio è registrato e verificabile.</p>
-          <div className="mt-6 space-y-1">
+          <ol className="mt-6 space-y-1">
             {dpp.events.map((evt, i) => (
-              <div key={evt.id} className="flex gap-4">
+              <li key={evt.id} className="flex gap-4">
                 <div className="flex flex-col items-center">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">
                     {i + 1}
                   </div>
-                  {i < dpp.events.length - 1 && <div className="h-full w-0.5 bg-emerald-200" />}
+                  {i < dpp.events.length - 1 ? <div className="h-full w-0.5 bg-emerald-200" /> : null}
                 </div>
                 <div className="flex-1 pb-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -134,12 +132,12 @@ export default async function TraceabilityPublicPage({
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-emerald-950/50">
                     <span>{timeFormatter.format(new Date(evt.timestamp))}</span>
                     <span>{evt.operator}</span>
-                    {evt.verified && <span className="text-emerald-600 font-medium">✓ Verificato</span>}
+                    {evt.verified ? <span className="font-medium text-emerald-600">✓ Verificato</span> : null}
                   </div>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         {/* Quality */}

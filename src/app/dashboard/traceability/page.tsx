@@ -1,13 +1,12 @@
 import Link from "next/link";
 import {
-  QrCode,
   Package,
   Shield,
-  ArrowRight,
   Leaf,
   Award,
   ExternalLink,
 } from "lucide-react";
+import { QrBadge } from "@/components/qr-badge";
 import {
   productLots,
   traceabilityEvents,
@@ -81,10 +80,7 @@ export default function TraceabilityPage() {
                   <h3 className="mt-3 text-xl font-semibold text-emerald-950">{lot.product}</h3>
                   <p className="mt-1 text-sm text-emerald-950/65">{lot.variety}</p>
                 </div>
-                {/* QR placeholder */}
-                <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border border-emerald-950/10 bg-[#f7f4ec]">
-                  <QrCode className="h-10 w-10 text-emerald-800" />
-                </div>
+                <QrBadge value={lot.lotCode} className="h-20 w-20 flex-shrink-0" />
               </div>
 
               <div className="mt-4 grid gap-2 text-sm text-emerald-950/75 sm:grid-cols-2">

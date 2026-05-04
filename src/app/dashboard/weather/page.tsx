@@ -134,10 +134,10 @@ export default function WeatherPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Storico piogge</h2>
-              <p className="text-sm text-emerald-950/65">Placeholder andamento precipitazioni (mm)</p>
+              <p className="text-sm text-emerald-950/65">Andamento cumulato delle precipitazioni nelle ultime settimane.</p>
             </div>
           </div>
-          <div className="mt-8 flex h-72 items-end justify-between gap-4 rounded-3xl border border-dashed border-emerald-950/15 bg-[#f7f4ec] px-6 py-5">
+          <div className="mt-8 flex h-72 items-end justify-between gap-4 rounded-3xl border border-dashed border-emerald-950/15 bg-[#f7f4ec] px-6 py-5" role="img" aria-label="Grafico dello storico piogge espresso in millimetri">
             {weatherData.historicalRainfall.map((point) => (
               <div key={point.label} className="flex flex-1 flex-col items-center justify-end gap-3">
                 <div

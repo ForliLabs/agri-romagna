@@ -1,4 +1,5 @@
 import { Map as MapIcon, Satellite, TrendingUp, TrendingDown, Eye, Cloud } from "lucide-react";
+import { FieldMapPreview } from "@/components/field-map-preview";
 import { fields } from "@/lib/data";
 import {
   ndviReadings,
@@ -21,7 +22,6 @@ const shortDateFormatter = new Intl.DateTimeFormat("it-IT", {
   month: "short",
 });
 
-const fieldMap = new globalThis.Map(fields.map((f) => [f.id, f]));
 const latestNDVI = getLatestNDVIByField(ndviReadings);
 const boundaryMap = new globalThis.Map(fieldBoundaries.map((b) => [b.fieldId, b]));
 
@@ -97,20 +97,8 @@ export default function SatellitePage() {
             </div>
           </div>
 
-          {/* Map placeholder */}
-          <div className="mt-6 flex h-72 items-center justify-center rounded-3xl border border-dashed border-emerald-700/30 bg-gradient-to-br from-emerald-50 to-lime-50 text-center">
-            <div>
-              <MapIcon className="mx-auto h-12 w-12 text-emerald-700/50" />
-              <p className="mt-3 text-sm font-medium text-emerald-900/70">
-                Mappa interattiva MapLibre GL
-              </p>
-              <p className="mt-1 text-xs text-emerald-900/50">
-                Integrazione con catasto e layer Sentinel-2 NDVI
-              </p>
-              <p className="mt-2 text-xs text-emerald-800/40">
-                Centro: 44.1490°N, 12.1340°E · Bertinoro (FC)
-              </p>
-            </div>
+          <div className="mt-6">
+            <FieldMapPreview />
           </div>
 
           {/* NDVI history per field */}
@@ -129,7 +117,7 @@ export default function SatellitePage() {
                     <p className="text-sm font-semibold text-emerald-950">
                       {field.name} <span className="font-normal text-emerald-950/60">· {field.crop}</span>
                     </p>
-                    <div className="mt-3 flex items-end gap-2">
+                    <div className="mt-3 flex items-end gap-2" role="img" aria-label={`Andamento NDVI di ${field.name}`}>
                       {history.map((r) => (
                         <div key={r.id} className="flex flex-1 flex-col items-center gap-1">
                           <div

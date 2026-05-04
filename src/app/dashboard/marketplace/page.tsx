@@ -1,6 +1,5 @@
 import {
   ShoppingBag,
-  Package,
   Leaf,
   Award,
   Euro,
@@ -16,6 +15,7 @@ import {
   subscriptionBoxes,
   getMarketplaceSummary,
 } from "@/lib/marketplace-data";
+import { ProductArtwork } from "@/components/product-artwork";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -122,13 +122,11 @@ export default function MarketplacePage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {marketplaceProducts.map((product) => (
               <article key={product.id} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-5">
-                {/* Product image placeholder */}
-                <div className="flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-lime-50 text-center">
-                  <div>
-                    <Package className="mx-auto h-8 w-8 text-emerald-700/50" />
-                    <p className="mt-1 text-xs text-emerald-900/50">{product.imageAlt}</p>
-                  </div>
-                </div>
+                <ProductArtwork
+                  category={product.category}
+                  title={product.name}
+                  subtitle={product.imageAlt}
+                />
                 <div className="mt-4 flex items-start justify-between gap-2">
                   <div>
                     <h3 className="font-semibold text-emerald-950">{product.name}</h3>

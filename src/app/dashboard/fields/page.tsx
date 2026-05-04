@@ -1,4 +1,5 @@
 import { Satellite, Sprout, Trees } from "lucide-react";
+import { FieldMapPreview } from "@/components/field-map-preview";
 import { fields } from "@/lib/data";
 
 const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -71,8 +72,11 @@ export default function FieldsPage() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-emerald-950">Schede di dettaglio</h2>
-            <p className="text-sm text-emerald-950/65">Con placeholder per vista satellitare e indicatori NDVI</p>
+            <p className="text-sm text-emerald-950/65">Vista operativa con mappa catastale sintetica e indicatori di vigore vegetativo.</p>
           </div>
+        </div>
+        <div className="mt-6">
+          <FieldMapPreview />
         </div>
         <div className="mt-6 grid gap-6 xl:grid-cols-2">
           {fields.map((field) => (
@@ -92,11 +96,15 @@ export default function FieldsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex h-44 items-center justify-center rounded-3xl border border-dashed border-emerald-700/30 bg-[linear-gradient(135deg,rgba(22,101,52,0.12),rgba(187,247,208,0.12))] text-center text-sm font-medium text-emerald-900/70">
-                <div>
-                  <Satellite className="mx-auto h-8 w-8" />
-                  <p className="mt-3">Placeholder vista satellitare / vigore vegetativo</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em]">Aggiornamento indice campo previsto ogni 24h</p>
+              <div className="mt-5 rounded-3xl border border-emerald-950/10 bg-[linear-gradient(135deg,rgba(22,101,52,0.08),rgba(187,247,208,0.16))] p-5 text-sm text-emerald-900/75">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-2xl bg-white/80 p-3 shadow-sm">
+                    <Satellite className="h-6 w-6 text-emerald-700" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-emerald-950">Overlay satellitare disponibile</p>
+                    <p className="mt-2 leading-6">Il campo è pronto per il confronto con vigore NDVI, confini catastali e prossimi passaggi Sentinel-2. Aggiornamento operativo previsto ogni 24h.</p>
+                  </div>
                 </div>
               </div>
 

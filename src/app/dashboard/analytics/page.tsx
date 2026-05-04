@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
+import { readApiError } from "@/lib/api-client";
 
 interface AnalyticsData {
   overview: {
@@ -47,23 +49,62 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [error, setError] = useState("");
 
+  async function loadAnalytics() {
+    setError("");
+    try {
+      const response = await fetch("/api/analytics");
+      if (!response.ok) {
+        throw new Error(await readApiError(response));
+      }
+      setData((await response.json()) as AnalyticsData);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Impossibile caricare i dati di analytics.");
+    }
+  }
+
   useEffect(() => {
+    let active = true;
+
     fetch("/api/analytics")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setError("Impossibile caricare i dati di analytics."));
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(await readApiError(response));
+        }
+
+        return (await response.json()) as AnalyticsData;
+      })
+      .then((payload) => {
+        if (!active) return;
+        setError("");
+        setData(payload);
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setError(
+          loadError instanceof Error ? loadError.message : "Impossibile caricare i dati di analytics."
+        );
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-700">
-        {error}
-      </div>
+      <ErrorState
+        title="Analytics non disponibili"
+        description={error}
+        onRetry={() => {
+          setData(null);
+          void loadAnalytics();
+        }}
+      />
     );
   }
 
   if (!data) {
-    return <div className="py-12 text-center text-emerald-700">Caricamento analytics...</div>;
+    return <PageSkeleton cards={4} rows={4} />;
   }
 
   return (
@@ -118,7 +159,10 @@ export default function AnalyticsPage() {
       <div className="rounded-xl border border-emerald-100 bg-white p-5">
         <h3 className="mb-3 text-sm font-semibold text-emerald-900">Prestazioni per Route</h3>
         {data.routeStats.length === 0 ? (
-          <p className="py-4 text-center text-sm text-emerald-600">Nessun dato ancora disponibile.</p>
+          <EmptyState
+            title="Nessun dato di traffico"
+            description="Le statistiche per route appariranno appena la piattaforma registrerà traffico reale o di test."
+          />
         ) : (
           <div className="table-responsive">
             <table className="w-full text-sm">
@@ -151,7 +195,10 @@ export default function AnalyticsPage() {
       <div className="rounded-xl border border-emerald-100 bg-white p-5">
         <h3 className="mb-3 text-sm font-semibold text-emerald-900">Utilizzo Funzionalità</h3>
         {data.featureHeatmap.length === 0 ? (
-          <p className="py-4 text-center text-sm text-emerald-600">Inizia a usare la piattaforma per vedere i dati.</p>
+          <EmptyState
+            title="Heatmap vuota"
+            description="Inizia a usare la piattaforma per vedere quali moduli vengono consultati più spesso."
+          />
         ) : (
           <div className="space-y-2">
             {data.featureHeatmap.map((feature) => {
@@ -160,7 +207,7 @@ export default function AnalyticsPage() {
               return (
                 <div key={feature.path} className="flex items-center gap-3">
                   <span className="w-40 truncate font-mono text-xs text-emerald-800">{feature.path}</span>
-                  <div className="h-3 flex-1 rounded-full bg-emerald-50">
+                  <div className="h-3 flex-1 rounded-full bg-emerald-50" role="img" aria-label={`Utilizzo di ${feature.path}: ${feature.visits} visite`}>
                     <div
                       className="h-3 rounded-full bg-emerald-500"
                       style={{ width: `${pct}%` }}

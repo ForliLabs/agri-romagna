@@ -86,8 +86,8 @@ export default function Home() {
           { label: "Prezzi", href: "#prezzi" },
           { label: "Dashboard", href: "/dashboard" },
         ]}
-        ctaLabel="Entra in piattaforma"
-        ctaHref="/dashboard"
+        ctaLabel="Accedi alla piattaforma"
+        ctaHref="/login"
       />
 
       <main>
@@ -107,16 +107,16 @@ export default function Home() {
               </p>
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <Link
-                  href="/dashboard"
+                  href="/login"
                   className="rounded-full bg-[#f4f1e8] px-6 py-3 text-center text-base font-semibold text-emerald-950 transition-transform hover:-translate-y-0.5"
                 >
-                  Apri la demo operativa
+                  Accedi alla demo operativa
                 </Link>
                 <Link
-                  href="#prezzi"
+                  href="/onboarding"
                   className="rounded-full border border-white/25 px-6 py-3 text-center text-base font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/10"
                 >
-                  Vedi i piani
+                  Configura una cooperativa
                 </Link>
               </div>
             </div>
@@ -172,6 +172,10 @@ export default function Home() {
               <p className="mt-1">
                 Dalla singola azienda ai ritiri condivisi, senza fogli sparsi o telefonate a vuoto.
               </p>
+            </div>
+            <div className="sm:col-span-3 rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4 text-emerald-950/70">
+              <p className="font-semibold text-emerald-950">Primo accesso guidato</p>
+              <p className="mt-1">Se è la prima volta, avvia l&apos;onboarding: creerai cooperativa, aziende, campi e membri prima di entrare nel dashboard.</p>
             </div>
           </div>
         </section>
