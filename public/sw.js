@@ -1,12 +1,28 @@
 // AgriRomagna Service Worker — Offline-first with background sync
-const CACHE_NAME = "agriromagna-v1";
+const CACHE_NAME = "agriromagna-v2";
 const OFFLINE_URL = "/offline";
 
 const PRECACHE_URLS = [
   "/",
   "/dashboard",
+  "/dashboard/fields",
+  "/dashboard/weather",
+  "/dashboard/harvest",
+  "/dashboard/advisor",
   "/offline",
   "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
+
+// API endpoints to cache for offline access (weather, field data)
+const CACHEABLE_API_PATHS = [
+  "/api/fields",
+  "/api/weather",
+  "/api/weather/live",
+  "/api/advisor",
+  "/api/compliance",
+  "/api/iot",
 ];
 
 // Install: precache essential assets
@@ -52,16 +68,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // API requests: network-first
+  // API requests: network-first with stale-while-revalidate for cacheable endpoints
   if (url.pathname.startsWith("/api/")) {
+    const isCacheable = CACHEABLE_API_PATHS.some((p) => url.pathname.startsWith(p));
+
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (isCacheable && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() => caches.match(request).then((cached) => {
+          if (cached) return cached;
+          return new Response(
+            JSON.stringify({ error: "Offline — dati non disponibili.", offline: true }),
+            { status: 503, headers: { "Content-Type": "application/json" } }
+          );
+        }))
     );
     return;
   }
