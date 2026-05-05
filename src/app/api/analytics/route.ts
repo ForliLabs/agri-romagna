@@ -1,13 +1,20 @@
 import { telemetry } from "@/lib/telemetry";
 import { analyticsEventSchema } from "@/lib/validators/schemas";
+import { authorizeRoute } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { denied } = await authorizeRoute(request, "analytics:read");
+  if (denied) return denied;
+
   return Response.json(telemetry.getDashboardData());
 }
 
 export async function POST(request: Request) {
+  const { denied } = await authorizeRoute(request, "analytics:read");
+  if (denied) return denied;
+
   try {
     const body = await request.json();
     const parsed = analyticsEventSchema.safeParse(body);
