@@ -23,3 +23,19 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Generates a prefixed unique identifier using `crypto.randomUUID()`.
+ *
+ * @param prefix - Short entity prefix (e.g., `"field"`, `"user"`, `"farm"`).
+ * @returns A string like `"field-a1b2c3d4"`.
+ *
+ * @example
+ * ```ts
+ * generateId("field") // → "field-a1b2c3d4"
+ * generateId("user")  // → "user-e5f6a7b8"
+ * ```
+ */
+export function generateId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+}
