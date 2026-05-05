@@ -6,6 +6,24 @@
   --surface: #fffdf7;
   --muted: #62735f;
   --border: #d6ddcf;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(5, 46, 22, 0.1);
+  --section-bg: #f7f4ec;
+  --sidebar-bg: #193524;
+  --sidebar-text: #ecfdf5;
+}
+
+.dark {
+  --background: #0c1a12;
+  --foreground: #e2efe6;
+  --surface: #162b1e;
+  --muted: #8ca68a;
+  --border: #2d4a38;
+  --card-bg: rgba(22, 43, 30, 0.9);
+  --card-border: rgba(236, 253, 245, 0.1);
+  --section-bg: #122318;
+  --sidebar-bg: #0a1610;
+  --sidebar-text: #d1fae5;
 }
 
 @theme inline {
@@ -14,6 +32,9 @@
   --color-surface: var(--surface);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-section-bg: var(--section-bg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -55,6 +76,12 @@ body {
     linear-gradient(180deg, #f4f1e8 0%, #eef4eb 100%);
   color: var(--foreground);
   line-height: 1.5;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top, rgba(22, 101, 52, 0.25), transparent 32%),
+    linear-gradient(180deg, #0c1a12 0%, #0f2218 100%);
 }
 
 #main-content:focus {

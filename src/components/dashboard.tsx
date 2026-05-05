@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { CloudSun, Home, Menu, Search, Tractor, Trees, User, X } from "lucide-react";
 import { trapFocus } from "@/lib/focus-management";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface SidebarItem {
   label: string;
@@ -176,9 +178,12 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
       <aside className="hidden w-80 flex-shrink-0 border-r border-emerald-950/10 bg-[#193524] text-emerald-50 lg:block">
         <div className="sticky top-0 flex h-screen flex-col">
           <div className="border-b border-emerald-50/10 px-6 py-5">
-            <Link href="/dashboard" className="text-lg font-bold tracking-tight text-white">
-              {brand}
-            </Link>
+            <div className="flex items-center justify-between gap-2">
+              <Link href="/dashboard" className="text-lg font-bold tracking-tight text-white">
+                {brand}
+              </Link>
+              <ThemeToggle />
+            </div>
             <p className="mt-1 text-sm text-emerald-100/70">Centro operativo cooperativo</p>
             <div className="mt-4">{sidebarSearch}</div>
           </div>
@@ -252,10 +257,12 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
               </Link>
               <p className="text-xs text-emerald-950/55">Workflow, monitoraggio e operatività</p>
             </div>
+            <ThemeToggle />
           </div>
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+          <Breadcrumb />
           {children}
         </main>
 
@@ -297,6 +304,12 @@ const trendPrefixes: Record<NonNullable<StatCardProps["trend"]>, string> = {
   neutral: "•",
 };
 
+const trendLabels: Record<NonNullable<StatCardProps["trend"]>, string> = {
+  up: "In aumento",
+  down: "In calo",
+  neutral: "Stabile",
+};
+
 export function StatCard({ label, value, change, trend = "neutral" }: StatCardProps) {
   return (
     <div className="rounded-2xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
@@ -310,6 +323,7 @@ export function StatCard({ label, value, change, trend = "neutral" }: StatCardPr
             trend === "down" && "text-amber-700",
             trend === "neutral" && "text-emerald-950/55"
           )}
+          aria-label={`${trendLabels[trend]}: ${change}`}
         >
           <span className="mr-1" aria-hidden="true">{trendPrefixes[trend]}</span>
           {change}

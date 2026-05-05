@@ -67,7 +67,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-8 text-center text-rose-950 shadow-sm shadow-rose-950/5">
+    <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-8 text-center text-rose-950 shadow-sm shadow-rose-950/5">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-rose-700 shadow-sm">
         <AlertCircle className="h-7 w-7" aria-hidden="true" />
       </div>
