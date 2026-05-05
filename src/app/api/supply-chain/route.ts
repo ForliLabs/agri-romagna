@@ -4,9 +4,14 @@ import {
   processHarvestDeclaration,
   supplyChainLotsStore,
   transitionLot,
-  type HarvestDeclarationPayload,
-  type LotLifecycle,
 } from "@/lib/supply-chain-data";
+import { authorizeRoute, createSuccessResponse } from "@/lib/api-response";
+import { validationError, withErrorHandling } from "@/lib/api-errors";
+import { logisticsDispatchRecommendations } from "@/lib/operations-insights";
+import {
+  createSupplyChainDeclarationSchema,
+  createSupplyChainTransitionSchema,
+} from "@/lib/validators/schemas";
 
 async function getPayload() {
   const lots = await supplyChainLotsStore.findAll();
@@ -14,50 +19,48 @@ async function getPayload() {
     summary: getSupplyChainSummary(),
     lots,
     timelines: Object.fromEntries(lots.map((lot) => [lot.id, getLotTimeline(lot.id)])),
+    dispatchRecommendations: logisticsDispatchRecommendations,
   };
 }
 
-export async function GET() {
-  return Response.json(await getPayload());
-}
+export const GET = withErrorHandling(async (request: Request) => {
+  const { denied } = await authorizeRoute(request, "supply-chain:read");
+  if (denied) return denied;
 
-export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as
-      | {
-          action?: "transition";
-          lotId?: string;
-          toStatus?: LotLifecycle;
-        }
-      | HarvestDeclarationPayload;
+  return createSuccessResponse(await getPayload(), { meta: { domain: "supply-chain" } });
+});
 
-    if ("action" in body && body.action === "transition") {
-      if (!body.lotId || !body.toStatus) {
-        return Response.json({ error: "lotId e toStatus sono obbligatori." }, { status: 400 });
-      }
+export const POST = withErrorHandling(async (request: Request) => {
+  const { denied } = await authorizeRoute(request, "supply-chain:write");
+  if (denied) return denied;
 
-      const lot = transitionLot(body.lotId, body.toStatus);
-      return Response.json({
+  const body = await request.json();
+  const transitionPayload = createSupplyChainTransitionSchema.safeParse(body);
+
+  if (transitionPayload.success) {
+    const lot = transitionLot(transitionPayload.data.lotId, transitionPayload.data.toStatus);
+    return createSuccessResponse(
+      {
         ...(await getPayload()),
         updatedLot: lot,
-        timeline: getLotTimeline(body.lotId),
-      });
-    }
+        timeline: getLotTimeline(transitionPayload.data.lotId),
+      },
+      { meta: { domain: "supply-chain" } }
+    );
+  }
 
-    if (!("fieldId" in body) || !("crop" in body) || !("harvestDate" in body)) {
-      return Response.json({ error: "Payload dichiarazione raccolta non valido." }, { status: 400 });
-    }
+  const declarationPayload = createSupplyChainDeclarationSchema.safeParse(body);
+  if (!declarationPayload.success) {
+    return validationError(declarationPayload.error);
+  }
 
-    const result = processHarvestDeclaration(body);
-    return Response.json({
+  const result = processHarvestDeclaration(declarationPayload.data);
+  return createSuccessResponse(
+    {
       ...(await getPayload()),
       createdLot: result.lot,
       timeline: result.timeline,
-    });
-  } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Operazione supply chain non riuscita." },
-      { status: 400 }
-    );
-  }
-}
+    },
+    { status: 201, meta: { domain: "supply-chain" } }
+  );
+});

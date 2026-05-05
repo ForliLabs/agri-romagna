@@ -8,16 +8,23 @@ import {
   refreshAccessToken,
   registerUser,
 } from "@/lib/auth-service";
+import { config } from "@/lib/config";
+import { checkAuthRateLimit } from "@/lib/rate-limiter";
+import {
+  loginSchema,
+  registerSchema,
+  refreshTokenSchema,
+  requestOtpSchema,
+  verifyOtpSchema,
+} from "@/lib/validators/schemas";
 
-const JWT_SECRET = process.env.JWT_SECRET || "agri-romagna-dev-secret-change-in-production";
 const OTP_COOKIE = "otp_challenge";
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 function sessionCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: IS_PRODUCTION,
+    secure: config.IS_PRODUCTION,
     path: "/",
     maxAge,
   };
@@ -30,33 +37,45 @@ async function applySessionCookies(tokens: { accessToken: string; refreshToken: 
   cookieStore.delete(OTP_COOKIE);
 }
 
+function validationErrorResponse(error: unknown) {
+  const issues = (error as { issues?: { path: string[]; message: string }[] })?.issues ?? [];
+  const messages = issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+  return Response.json(
+    { success: false, error: messages || "Dati non validi." },
+    { status: 400 }
+  );
+}
+
 export async function POST(request: Request) {
   try {
+    // Rate limit auth endpoints
+    const rateLimited = checkAuthRateLimit(request);
+    if (rateLimited) return rateLimited;
+
     const body = await request.json();
     const action = body.action ?? "login";
     const cookieStore = await cookies();
 
     if (action === "register") {
-      if (!body.email || !body.password || !body.name) {
-        return Response.json(
-          { success: false, error: "Email, password e nome sono obbligatori." },
-          { status: 400 }
-        );
-      }
+      const parsed = registerSchema.safeParse(body);
+      if (!parsed.success) return validationErrorResponse(parsed.error);
+      const data = parsed.data;
       const result = await registerUser({
-        email: body.email,
-        password: body.password,
-        name: body.name,
-        role: body.role,
-        cooperativeId: body.cooperativeId,
-        farmId: body.farmId,
-        phone: body.phone,
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        role: data.role,
+        cooperativeId: data.cooperativeId,
+        farmId: data.farmId,
+        phone: data.phone,
       });
       return Response.json(result, { status: result.success ? 201 : 400 });
     }
 
     if (action === "refresh") {
-      const refreshToken = body.refreshToken || cookieStore.get("refresh_token")?.value;
+      const parsed = refreshTokenSchema.safeParse(body);
+      if (!parsed.success) return validationErrorResponse(parsed.error);
+      const refreshToken = parsed.data.refreshToken || cookieStore.get("refresh_token")?.value;
       if (!refreshToken) {
         return Response.json(
           { success: false, error: "Token di refresh mancante." },
@@ -72,7 +91,9 @@ export async function POST(request: Request) {
     }
 
     if (action === "request-otp") {
-      const phone = normalizePhone(body.phone ?? "");
+      const parsed = requestOtpSchema.safeParse(body);
+      if (!parsed.success) return validationErrorResponse(parsed.error);
+      const phone = normalizePhone(parsed.data.phone);
       if (phone.length < 9) {
         return Response.json(
           { success: false, error: "Inserisci un numero di telefono valido." },
@@ -81,7 +102,7 @@ export async function POST(request: Request) {
       }
 
       const code = String(Math.floor(100000 + Math.random() * 900000));
-      const challenge = jwt.sign({ phone, code, type: "otp" }, JWT_SECRET, {
+      const challenge = jwt.sign({ phone, code, type: "otp" }, config.JWT_SECRET, {
         expiresIn: "5m",
       });
       cookieStore.set(OTP_COOKIE, challenge, sessionCookieOptions(60 * 5));
@@ -89,13 +110,15 @@ export async function POST(request: Request) {
       return Response.json({
         success: true,
         message: "Codice inviato via SMS demo. Inseriscilo entro 5 minuti.",
-        devCode: IS_PRODUCTION ? undefined : code,
+        devCode: config.IS_PRODUCTION ? undefined : code,
       });
     }
 
     if (action === "verify-otp") {
-      const phone = normalizePhone(body.phone ?? "");
-      const code = String(body.code ?? "").trim();
+      const parsed = verifyOtpSchema.safeParse(body);
+      if (!parsed.success) return validationErrorResponse(parsed.error);
+      const phone = normalizePhone(parsed.data.phone);
+      const code = parsed.data.code.trim();
       const challenge = cookieStore.get(OTP_COOKIE)?.value;
 
       if (!phone || !code || !challenge) {
@@ -106,7 +129,7 @@ export async function POST(request: Request) {
       }
 
       try {
-        const decoded = jwt.verify(challenge, JWT_SECRET) as { phone: string; code: string; type?: string };
+        const decoded = jwt.verify(challenge, config.JWT_SECRET) as { phone: string; code: string; type?: string };
         if (decoded.type !== "otp" || decoded.phone !== phone || decoded.code !== code) {
           return Response.json(
             { success: false, error: "Codice OTP non valido o scaduto." },
@@ -129,14 +152,11 @@ export async function POST(request: Request) {
       return Response.json({ success: true, user: result.user, tokens: result.tokens });
     }
 
-    if (!body.email || !body.password) {
-      return Response.json(
-        { success: false, error: "Email e password sono obbligatori." },
-        { status: 400 }
-      );
-    }
+    // Default: login
+    const parsed = loginSchema.safeParse(body);
+    if (!parsed.success) return validationErrorResponse(parsed.error);
 
-    const result = await authenticateUser(body.email, body.password);
+    const result = await authenticateUser(parsed.data.email, parsed.data.password);
     if (!result.success) {
       return Response.json(result, { status: 401 });
     }

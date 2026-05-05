@@ -65,3 +65,37 @@ export async function POST(request: Request) {
 
   return Response.json({ proposal }, { status: 201 });
 }
+
+export async function PUT(request: Request) {
+  const body = (await request.json()) as { id: string } & Partial<Proposal>;
+
+  if (!body.id) {
+    return Response.json({ error: "ID proposta obbligatorio." }, { status: 400 });
+  }
+
+  const existing = await proposalsStore.findById(body.id);
+  if (!existing) {
+    return Response.json({ error: "Proposta non trovata." }, { status: 404 });
+  }
+
+  const { id, ...updates } = body;
+  const updated = await proposalsStore.update(id, updates);
+
+  return Response.json({ proposal: updated });
+}
+
+export async function DELETE(request: Request) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+
+  if (!id) {
+    return Response.json({ error: "ID proposta obbligatorio." }, { status: 400 });
+  }
+
+  const existed = await proposalsStore.delete(id);
+  if (!existed) {
+    return Response.json({ error: "Proposta non trovata." }, { status: 404 });
+  }
+
+  return Response.json({ deleted: true, id });
+}
