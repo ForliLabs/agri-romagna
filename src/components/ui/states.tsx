@@ -2,7 +2,7 @@ import { AlertCircle, Inbox, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-emerald-950/8", className)} aria-hidden="true" />;
+  return <div className={cn("rounded-2xl skeleton-shimmer", className)} aria-hidden="true" />;
 }
 
 export function PageSkeleton({ cards = 4, rows = 3 }: { cards?: number; rows?: number }) {
