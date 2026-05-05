@@ -7,6 +7,7 @@ import {
   getCooperativePL,
 } from "@/lib/financial-data";
 import { fields } from "@/lib/data";
+import { FinancialCharts } from "./charts";
 
 const currencyFormatter = new Intl.NumberFormat("it-IT", {
   style: "currency",
@@ -292,6 +293,11 @@ export default function FinancialPage() {
           </div>
         </article>
       </section>
+
+      <FinancialCharts
+        cashFlow={cashFlowProjection}
+        costBreakdown={cooperativePL.costBreakdown}
+      />
     </div>
   );
 }

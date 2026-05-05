@@ -7,6 +7,7 @@ import {
   getCooperativeCarbonSummary,
 } from "@/lib/carbon-data";
 import { fields } from "@/lib/data";
+import { CarbonCharts } from "./charts";
 
 const numberFormatter = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 1,
@@ -171,6 +172,8 @@ export default function CarbonPage() {
           </div>
         </article>
       </section>
+
+      <CarbonCharts data={categoryBreakdown} />
 
       <section>
         <div className="flex items-center gap-3">

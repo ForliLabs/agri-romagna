@@ -1,16 +1,18 @@
 import Link from "next/link";
 import {
-  Package,
-  Shield,
-  Leaf,
   Award,
   ExternalLink,
+  Leaf,
+  Package,
+  Shield,
 } from "lucide-react";
+import { StatCard } from "@/components/dashboard";
 import { QrBadge } from "@/components/qr-badge";
+import { traceabilityIntegrityOverview } from "@/lib/operations-insights";
 import {
   productLots,
-  traceabilityEvents,
   qualityRecords,
+  traceabilityEvents,
 } from "@/lib/traceability-data";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -37,6 +39,10 @@ const phaseClasses: Record<string, string> = {
   distribuzione: "bg-emerald-50 text-emerald-800",
 };
 
+const overviewByLot = new Map(traceabilityIntegrityOverview.map((item) => [item.lotId, item]));
+const solidLots = traceabilityIntegrityOverview.filter((item) => item.integrityScore >= 80).length;
+const attentionLots = traceabilityIntegrityOverview.filter((item) => item.integrityScore < 70).length;
+
 export default function TraceabilityPage() {
   return (
     <div className="space-y-8">
@@ -48,16 +54,83 @@ export default function TraceabilityPage() {
           Passaporto digitale dei prodotti.
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-950/70 sm:text-base">
-          Ogni lotto ha un codice QR che racconta la storia completa dal campo al
-          consumatore. Conforme al Digital Product Passport UE (2025–2027).
+          Ogni lotto ha un codice QR che racconta la storia completa dal campo al consumatore.
+          In iterazione 2 la dashboard mostra anche copertura di fase, verifiche mancanti e qualità disponibile.
         </p>
       </section>
 
-      {/* Lot cards */}
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Lotti tracciati" value={String(productLots.length)} change="Catalogo DPP attivo" trend="up" />
+        <StatCard label="Integrità alta" value={String(solidLots)} change="Score ≥ 80 su filiera e verifiche" trend="up" />
+        <StatCard label="Lotti da integrare" value={String(attentionLots)} change="Mancano eventi o verifiche qualità" trend="down" />
+        <StatCard
+          label="Qualità allegata"
+          value={String(qualityRecords.length)}
+          change="Referti disponibili collegati ai lotti"
+          trend="neutral"
+        />
+      </section>
+
+      <section className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
+            <Shield className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-emerald-950">Integrity board</h2>
+            <p className="text-sm text-emerald-950/65">Dove la catena è completa e dove serve ancora un evento o un controllo</p>
+          </div>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {traceabilityIntegrityOverview.map((item) => (
+            <article key={item.lotId} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-emerald-950">{item.product}</p>
+                  <p className="mt-1 text-xs font-mono text-emerald-700">{item.lotCode}</p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    item.integrityScore >= 80
+                      ? "bg-emerald-50 text-emerald-800"
+                      : item.integrityScore >= 70
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-rose-100 text-rose-700"
+                  }`}
+                >
+                  score {item.integrityScore}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-950/45">Fasi coperte</p>
+                  <p className="mt-1 text-lg font-semibold text-emerald-950">{item.phaseCoverage}%</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-950/45">Eventi verificati</p>
+                  <p className="mt-1 text-lg font-semibold text-emerald-950">{item.verifiedRate}%</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-950/45">Qualità allegata</p>
+                  <p className="mt-1 text-lg font-semibold text-emerald-950">{item.qualityCoverage}%</p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm text-emerald-950/70">
+                Compliance {item.complianceStatus} ·
+                {item.missingPhases.length > 0
+                  ? ` Fasi mancanti: ${item.missingPhases.join(", ")}.`
+                  : " catena completa su tutte le fasi previste."}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-6 md:grid-cols-2">
         {productLots.map((lot) => {
-          const events = traceabilityEvents.filter((e) => e.lotId === lot.id);
-          const quality = qualityRecords.find((q) => q.lotId === lot.id);
+          const events = traceabilityEvents.filter((event) => event.lotId === lot.id);
+          const quality = qualityRecords.find((record) => record.lotId === lot.id);
+          const overview = overviewByLot.get(lot.id);
           return (
             <article key={lot.id} className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm">
               <div className="flex items-start justify-between gap-4">
@@ -90,11 +163,34 @@ export default function TraceabilityPage() {
                 <p><span className="font-semibold text-emerald-950">Volume:</span> {(lot.volumeKg / 1000).toFixed(1)} t</p>
               </div>
 
-              {/* Event timeline mini */}
+              <div className="mt-4 rounded-2xl bg-[#f7f4ec] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-emerald-950">Copertura filiera</p>
+                  <span className="text-sm font-semibold text-emerald-700">{overview?.integrityScore ?? 0}/100</span>
+                </div>
+                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
+                  <div
+                    className={`h-full rounded-full ${
+                      (overview?.integrityScore ?? 0) >= 80
+                        ? "bg-emerald-600"
+                        : (overview?.integrityScore ?? 0) >= 70
+                          ? "bg-amber-500"
+                          : "bg-rose-500"
+                    }`}
+                    style={{ width: `${overview?.integrityScore ?? 0}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-emerald-950/70">
+                  {overview?.missingPhases.length
+                    ? `Fasi mancanti: ${overview.missingPhases.join(", ")}.`
+                    : "Tutte le fasi previste sono coperte."}
+                </p>
+              </div>
+
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {events.map((evt) => (
-                  <span key={evt.id} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${phaseClasses[evt.phase]}`}>
-                    {phaseLabels[evt.phase]}
+                {events.map((event) => (
+                  <span key={event.id} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${phaseClasses[event.phase]}`}>
+                    {phaseLabels[event.phase]}
                   </span>
                 ))}
               </div>
@@ -102,7 +198,7 @@ export default function TraceabilityPage() {
               {quality && (
                 <div className="mt-3 flex items-center gap-2 text-sm">
                   <Shield className={`h-4 w-4 ${quality.passed ? "text-emerald-600" : "text-rose-600"}`} />
-                  <span className={quality.passed ? "text-emerald-700 font-medium" : "text-rose-700 font-medium"}>
+                  <span className={quality.passed ? "font-medium text-emerald-700" : "font-medium text-rose-700"}>
                     Qualità {quality.passed ? "conforme" : "non conforme"}
                   </span>
                 </div>
@@ -120,7 +216,6 @@ export default function TraceabilityPage() {
         })}
       </section>
 
-      {/* Full event log */}
       <section className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
@@ -144,24 +239,24 @@ export default function TraceabilityPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-950/10">
-              {traceabilityEvents.map((evt) => {
-                const lot = productLots.find((l) => l.id === evt.lotId);
+              {traceabilityEvents.map((event) => {
+                const lot = productLots.find((candidate) => candidate.id === event.lotId);
                 return (
-                  <tr key={evt.id}>
+                  <tr key={event.id}>
                     <td className="px-4 py-3 font-mono text-xs text-emerald-800">{lot?.lotCode}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${phaseClasses[evt.phase]}`}>
-                        {phaseLabels[evt.phase]}
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${phaseClasses[event.phase]}`}>
+                        {phaseLabels[event.phase]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-emerald-950">{evt.title}</td>
+                    <td className="px-4 py-3 font-medium text-emerald-950">{event.title}</td>
                     <td className="px-4 py-3 text-emerald-950/70">
-                      {dateFormatter.format(new Date(evt.timestamp))}
+                      {dateFormatter.format(new Date(event.timestamp))}
                     </td>
-                    <td className="px-4 py-3 text-emerald-950/70">{evt.operator}</td>
+                    <td className="px-4 py-3 text-emerald-950/70">{event.operator}</td>
                     <td className="px-4 py-3">
-                      {evt.verified ? (
-                        <span className="text-emerald-600 font-medium">✓</span>
+                      {event.verified ? (
+                        <span className="font-medium text-emerald-600">✓</span>
                       ) : (
                         <span className="text-emerald-950/40">—</span>
                       )}

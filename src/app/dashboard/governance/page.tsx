@@ -16,6 +16,7 @@ import {
   getProposals,
   getVotingResults,
 } from "@/lib/governance-data";
+import { GovernanceCrud } from "./crud";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -322,6 +323,8 @@ export default function GovernancePage() {
           </div>
         </article>
       </section>
+
+      <GovernanceCrud />
     </div>
   );
 }
