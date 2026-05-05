@@ -2,14 +2,22 @@ import { InMemoryStore } from "@/lib/db";
 
 // --- Auth & User Types ---
 
-export type UserRole = "farmer" | "coop_admin" | "member";
+/**
+ * @deprecated Legacy role type with old vocabulary.
+ * New code should use `UserRole` from `@/lib/auth-service`.
+ */
+export type LegacyUserRole = "farmer" | "coop_admin" | "member";
+
+/**
+ * @deprecated Legacy user type. New code should use `AuthUser` from `@/lib/auth-service`.
+ */
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   phone?: string;
-  role: UserRole;
+  role: LegacyUserRole;
   cooperativeId?: string;
   farmId?: string;
   avatarInitials: string;
@@ -132,7 +140,7 @@ export function getUserByToken(token: string): AuthUser | undefined {
   return users.find((u) => u.id === match[1]);
 }
 
-export function authorizeRole(user: AuthUser, requiredRoles: UserRole[]): boolean {
+export function authorizeRole(user: AuthUser, requiredRoles: LegacyUserRole[]): boolean {
   return requiredRoles.includes(user.role);
 }
 
