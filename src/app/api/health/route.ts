@@ -1,45 +1,49 @@
+import { healthMonitor } from "@/lib/health-monitor";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const checks: Record<string, { status: string; latencyMs?: number; error?: string }> = {};
-
-  // Database check
-  const dbStart = Date.now();
+// Register database health check (requires prisma import)
+healthMonitor.registerCheck("database", async () => {
+  const start = Date.now();
   try {
     await prisma.cooperative.count();
-    checks.database = { status: "healthy", latencyMs: Date.now() - dbStart };
+    return {
+      name: "database",
+      status: "healthy",
+      latencyMs: Date.now() - start,
+      message: "SQLite connection OK",
+    };
   } catch (error) {
-    checks.database = {
+    return {
+      name: "database",
       status: "unhealthy",
-      latencyMs: Date.now() - dbStart,
-      error: error instanceof Error ? error.message : "Unknown error",
+      latencyMs: Date.now() - start,
+      message: error instanceof Error ? error.message : "Database unreachable",
     };
   }
+});
 
-  // Memory check
-  const memUsage = process.memoryUsage();
-  checks.memory = {
-    status: memUsage.heapUsed < 512 * 1024 * 1024 ? "healthy" : "warning",
-    latencyMs: 0,
-  };
+/**
+ * GET /api/health — Full health report with all dependency checks.
+ * Supports ?probe=liveness|readiness for Kubernetes-style probes.
+ */
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const probe = url.searchParams.get("probe");
 
-  const allHealthy = Object.values(checks).every((c) => c.status === "healthy");
+  if (probe === "liveness") {
+    const result = await healthMonitor.liveness();
+    return Response.json(result, { status: result.alive ? 200 : 503 });
+  }
 
-  return Response.json(
-    {
-      status: allHealthy ? "healthy" : "degraded",
-      version: process.env.npm_package_version ?? "0.1.0",
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      checks,
-      memory: {
-        heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
-        heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
-        rssMB: Math.round(memUsage.rss / 1024 / 1024),
-      },
-    },
-    { status: allHealthy ? 200 : 503 }
-  );
+  if (probe === "readiness") {
+    const result = await healthMonitor.readiness();
+    return Response.json(result, { status: result.ready ? 200 : 503 });
+  }
+
+  const report = await healthMonitor.check();
+  return Response.json(report, {
+    status: report.status === "unhealthy" ? 503 : 200,
+  });
 }
