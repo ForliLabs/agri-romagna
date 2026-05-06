@@ -11,6 +11,10 @@ export interface Column<T> {
   sortable?: boolean;
   getValue?: (row: T) => string | number;
   className?: string;
+  /** If true, this column is always shown in mobile card view */
+  primary?: boolean;
+  /** If true, this column is hidden in mobile card view */
+  hideOnMobile?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -22,6 +26,8 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   pageSize?: number;
   className?: string;
+  /** Render as cards on mobile instead of horizontal scroll table. Defaults to true. */
+  mobileCards?: boolean;
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -35,6 +41,7 @@ export function DataTable<T extends Record<string, unknown>>({
   emptyMessage = "Nessun dato disponibile.",
   pageSize = 10,
   className,
+  mobileCards = true,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -88,6 +95,12 @@ export function DataTable<T extends Record<string, unknown>>({
       : <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-emerald-700" />;
   }
 
+  // Identify primary columns for mobile card view
+  const primaryColumns = columns.filter((col) => col.primary);
+  const secondaryColumns = columns.filter(
+    (col) => !col.primary && !col.hideOnMobile
+  );
+
   return (
     <div className={cn("overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 shadow-sm shadow-emerald-950/5", className)}>
       {searchable && (
@@ -106,7 +119,30 @@ export function DataTable<T extends Record<string, unknown>>({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      {/* Mobile card view */}
+      {mobileCards ? (
+        <div className="block md:hidden">
+          {paged.length === 0 ? (
+            <div className="px-6 py-8 text-center text-emerald-950/55">
+              {emptyMessage}
+            </div>
+          ) : (
+            <div className="divide-y divide-emerald-950/10">
+              {paged.map((row) => (
+                <MobileCard
+                  key={String(row[keyField])}
+                  row={row}
+                  primaryColumns={primaryColumns.length > 0 ? primaryColumns : columns.slice(0, 2)}
+                  secondaryColumns={secondaryColumns.length > 0 ? secondaryColumns : columns.slice(2)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Desktop table view */}
+      <div className={cn("overflow-x-auto", mobileCards && "hidden md:block")}>
         <table className="min-w-full divide-y divide-emerald-950/10 text-left text-sm">
           <thead className="bg-[#f7f4ec] text-emerald-950/65">
             <tr>
@@ -132,7 +168,7 @@ export function DataTable<T extends Record<string, unknown>>({
               </tr>
             ) : (
               paged.map((row) => (
-                <tr key={String(row[keyField])}>
+                <tr key={String(row[keyField])} className="animate-in-fade">
                   {columns.map((col) => (
                     <td key={col.key} className={cn("px-6 py-4 text-emerald-950/75", col.className)}>
                       {col.render ? col.render(row) : String(row[col.key] ?? "")}
@@ -170,6 +206,70 @@ export function DataTable<T extends Record<string, unknown>>({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Mobile card representation of a single table row */
+function MobileCard<T extends Record<string, unknown>>({
+  row,
+  primaryColumns,
+  secondaryColumns,
+}: {
+  row: T;
+  primaryColumns: Column<T>[];
+  secondaryColumns: Column<T>[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="px-4 py-3">
+      {/* Primary info always visible */}
+      <button
+        type="button"
+        className="flex w-full items-start justify-between gap-3 text-left"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <div className="min-w-0 flex-1 space-y-1">
+          {primaryColumns.map((col) => (
+            <div key={col.key}>
+              {col === primaryColumns[0] ? (
+                <p className="font-semibold text-emerald-950">
+                  {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                </p>
+              ) : (
+                <p className="text-sm text-emerald-950/65">
+                  {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-emerald-950/30 transition-transform duration-200",
+            expanded && "rotate-180"
+          )}
+          aria-hidden="true"
+        />
+      </button>
+
+      {/* Expanded secondary info */}
+      {expanded && secondaryColumns.length > 0 ? (
+        <div className="mt-3 space-y-2 border-t border-emerald-950/5 pt-3 animate-in-slide-down">
+          {secondaryColumns.map((col) => (
+            <div key={col.key} className="flex items-start justify-between gap-3 text-sm">
+              <span className="shrink-0 font-medium text-emerald-950/50">
+                {col.header}
+              </span>
+              <span className="text-right text-emerald-950/75">
+                {col.render ? col.render(row) : String(row[col.key] ?? "")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
