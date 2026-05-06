@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { CloudSun, Home, Menu, Search, Tractor, Trees, User, X } from "lucide-react";
 import { trapFocus } from "@/lib/focus-management";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandPalette, type CommandPaletteItem } from "@/components/command-palette";
+import { KeyboardShortcutsHelp, useKeyboardShortcut } from "@/components/keyboard-shortcuts-help";
+import { NotificationCenter } from "@/components/notification-center";
+import type { NotificationLog } from "@/lib/notification-service";
 
 interface SidebarItem {
   label: string;
@@ -43,6 +47,91 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
+
+  // Notification state (demo data)
+  const [notifications, setNotifications] = useState<NotificationLog[]>([
+    {
+      id: "notif-1",
+      userId: "user-tondini",
+      category: "frost",
+      channel: "push",
+      title: "Rischio gelo domani mattina",
+      message: "Temperature previste fino a -1°C su Bertinoro.",
+      sentAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
+      read: false,
+      actionUrl: "/dashboard/weather",
+    },
+    {
+      id: "notif-2",
+      userId: "user-tondini",
+      category: "flood",
+      channel: "in_app",
+      title: "Montone: livello in aumento",
+      message: "Livello attuale 2.18m — soglia attenzione a 2.40m.",
+      sentAt: new Date(Date.now() - 5 * 3600_000).toISOString(),
+      read: false,
+      actionUrl: "/dashboard/weather",
+    },
+    {
+      id: "notif-3",
+      userId: "user-tondini",
+      category: "compliance",
+      channel: "email",
+      title: "Scadenza PAC tra 15 giorni",
+      message: "Dichiarazione PAC 2026 per Seminativo via Zampeschi.",
+      sentAt: new Date(Date.now() - 24 * 3600_000).toISOString(),
+      read: true,
+      actionUrl: "/dashboard/compliance",
+    },
+    {
+      id: "notif-4",
+      userId: "user-tondini",
+      category: "pest",
+      channel: "in_app",
+      title: "Allerta peronospora vigna sud",
+      message: "Umidità >85% e T >18°C per 3 giorni consecutivi.",
+      sentAt: new Date(Date.now() - 8 * 3600_000).toISOString(),
+      read: false,
+      actionUrl: "/dashboard/pest-warning",
+    },
+  ]);
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const handleMarkAllRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  // Command palette items from sidebar items
+  const commandPaletteItems: CommandPaletteItem[] = useMemo(
+    () =>
+      items.map((item) => ({
+        id: item.href,
+        label: item.label,
+        href: item.href,
+        icon: item.icon,
+        section: item.section,
+        keywords: item.keywords,
+        priority: item.priority,
+      })),
+    [items]
+  );
+
+  // Keyboard shortcut: go to dashboard home
+  useKeyboardShortcut({
+    id: "go-home",
+    keys: "mod+shift+h",
+    label: "⌘⇧H",
+    description: "Vai alla panoramica",
+    section: "Navigazione",
+    handler: () => {
+      window.location.href = "/dashboard";
+    },
+  });
 
   const filteredGroups = useMemo(() => {
     const normalizedQuery = normalizeSearchValue(query);
@@ -182,7 +271,14 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
               <Link href="/dashboard" className="text-lg font-bold tracking-tight text-white">
                 {brand}
               </Link>
-              <ThemeToggle />
+              <div className="flex items-center gap-1">
+                <NotificationCenter
+                  notifications={notifications}
+                  onMarkAsRead={handleMarkAsRead}
+                  onMarkAllRead={handleMarkAllRead}
+                />
+                <ThemeToggle />
+              </div>
             </div>
             <p className="mt-1 text-sm text-emerald-100/70">Centro operativo cooperativo</p>
             <div className="mt-4">{sidebarSearch}</div>
@@ -261,7 +357,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-10 page-transition">
           <Breadcrumb />
           {children}
         </main>
@@ -287,6 +383,10 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
           </div>
         </nav>
       </div>
+
+      {/* Command Palette & Keyboard Shortcuts Help */}
+      <CommandPalette items={commandPaletteItems} />
+      <KeyboardShortcutsHelp />
     </div>
   );
 }
