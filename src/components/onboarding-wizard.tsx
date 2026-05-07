@@ -99,14 +99,16 @@ function FormField({
   label,
   children,
   required,
+  htmlFor,
 }: {
   label: string;
   children: React.ReactNode;
   required?: boolean;
+  htmlFor?: string;
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-emerald-950/70">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-emerald-950/70">
         {label}
         {required ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </label>
@@ -222,6 +224,13 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                         ? "bg-emerald-950 text-white ring-4 ring-emerald-200"
                         : "bg-emerald-100 text-emerald-950/40"
                   )}
+                  aria-label={
+                    i < currentStep
+                      ? `Passo ${i + 1}: ${s.title} — completato`
+                      : i === currentStep
+                        ? `Passo ${i + 1}: ${s.title} — corrente`
+                        : `Passo ${i + 1}: ${s.title}`
+                  }
                 >
                   {i < currentStep ? (
                     <Check className="h-4 w-4" aria-hidden="true" />
@@ -293,8 +302,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Cooperative step */}
             {currentStep === 1 ? (
               <div className="space-y-4">
-                <FormField label="Nome cooperativa" required>
+                <FormField label="Nome cooperativa" required htmlFor="onb-cooperativeName">
                   <input
+                    id="onb-cooperativeName"
                     type="text"
                     value={data.cooperativeName}
                     onChange={(e) =>
@@ -305,8 +315,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                     autoFocus
                   />
                 </FormField>
-                <FormField label="Provincia" required>
+                <FormField label="Provincia" required htmlFor="onb-province">
                   <select
+                    id="onb-province"
                     value={data.province}
                     onChange={(e) => updateField("province", e.target.value)}
                     className={selectClassName}
@@ -346,8 +357,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Admin step */}
             {currentStep === 2 ? (
               <div className="space-y-4">
-                <FormField label="Nome completo" required>
+                <FormField label="Nome completo" required htmlFor="onb-adminName">
                   <input
+                    id="onb-adminName"
                     type="text"
                     value={data.adminName}
                     onChange={(e) => updateField("adminName", e.target.value)}
@@ -356,8 +368,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                     autoFocus
                   />
                 </FormField>
-                <FormField label="Email" required>
+                <FormField label="Email" required htmlFor="onb-adminEmail">
                   <input
+                    id="onb-adminEmail"
                     type="email"
                     value={data.adminEmail}
                     onChange={(e) => updateField("adminEmail", e.target.value)}
@@ -371,8 +384,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Farm step */}
             {currentStep === 3 ? (
               <div className="space-y-4">
-                <FormField label="Nome azienda" required>
+                <FormField label="Nome azienda" required htmlFor="onb-farmName">
                   <input
+                    id="onb-farmName"
                     type="text"
                     value={data.farmName}
                     onChange={(e) => updateField("farmName", e.target.value)}
@@ -381,8 +395,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                     autoFocus
                   />
                 </FormField>
-                <FormField label="Località">
+                <FormField label="Località" htmlFor="onb-farmLocation">
                   <input
+                    id="onb-farmLocation"
                     type="text"
                     value={data.farmLocation}
                     onChange={(e) =>
@@ -393,8 +408,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Ettari" required>
+                  <FormField label="Ettari" required htmlFor="onb-farmHectares">
                     <input
+                      id="onb-farmHectares"
                       type="number"
                       value={data.farmHectares || ""}
                       onChange={(e) =>
@@ -409,8 +425,9 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       className={inputClassName}
                     />
                   </FormField>
-                  <FormField label="Specializzazione">
+                  <FormField label="Specializzazione" htmlFor="onb-farmSpecialty">
                     <select
+                      id="onb-farmSpecialty"
                       value={data.farmSpecialty}
                       onChange={(e) =>
                         updateField("farmSpecialty", e.target.value)
