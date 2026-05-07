@@ -129,17 +129,17 @@ export function NotificationCenter({
           role="dialog"
           aria-modal="false"
           aria-label="Centro notifiche"
-          className="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-2xl shadow-emerald-950/15 animate-in-slide-down sm:w-96"
+          className="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-2xl shadow-emerald-950/15 animate-in-slide-down dark:border-emerald-50/10 dark:bg-[#162b1e] dark:shadow-black/30 sm:w-96"
         >
           {/* Header */}
-          <div className="flex items-center justify-between gap-3 border-b border-emerald-950/10 bg-[#f7f4ec] px-4 py-3">
-            <h3 className="text-sm font-bold text-emerald-950">Notifiche</h3>
+          <div className="flex items-center justify-between gap-3 border-b border-emerald-950/10 bg-[#f7f4ec] px-4 py-3 dark:border-emerald-50/10 dark:bg-[#0c1a12]">
+            <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-50">Notifiche</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 ? (
                 <button
                   type="button"
                   onClick={onMarkAllRead}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-50/10"
                 >
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   Segna tutte lette
@@ -151,7 +151,7 @@ export function NotificationCenter({
                   setOpen(false);
                   buttonRef.current?.focus();
                 }}
-                className="rounded-full p-1 text-emerald-950/50 transition hover:bg-emerald-100 hover:text-emerald-950"
+                className="rounded-full p-1 text-emerald-950/50 transition hover:bg-emerald-100 hover:text-emerald-950 dark:text-emerald-100/50 dark:hover:bg-emerald-50/10 dark:hover:text-emerald-50"
                 aria-label="Chiudi notifiche"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -162,7 +162,7 @@ export function NotificationCenter({
           {/* Notification list */}
           <div className="max-h-[60vh] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-emerald-950/50">
+              <div className="px-4 py-8 text-center text-sm text-emerald-950/50 dark:text-emerald-100/50">
                 <Bell
                   className="mx-auto h-8 w-8 text-emerald-950/20"
                   aria-hidden="true"
@@ -181,8 +181,8 @@ export function NotificationCenter({
                     <div
                       key={notif.id}
                       className={cn(
-                        "group flex gap-3 px-4 py-3 transition hover:bg-emerald-50/50",
-                        !notif.read && "bg-emerald-50/30"
+                        "group flex gap-3 px-4 py-3 transition hover:bg-emerald-50/50 dark:hover:bg-emerald-50/5",
+                        !notif.read && "bg-emerald-50/30 dark:bg-emerald-50/5"
                       )}
                     >
                       <div
@@ -199,21 +199,22 @@ export function NotificationCenter({
                             className={cn(
                               "text-sm leading-tight",
                               notif.read
-                                ? "text-emerald-950/70"
-                                : "font-semibold text-emerald-950"
+                                ? "text-emerald-950/70 dark:text-emerald-100/70"
+                                : "font-semibold text-emerald-950 dark:text-emerald-50"
                             )}
                           >
+                            {!notif.read && <span className="sr-only">Non letta: </span>}
                             {notif.title}
                           </p>
                           {!notif.read ? (
-                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                           ) : null}
                         </div>
-                        <p className="mt-0.5 text-xs leading-relaxed text-emerald-950/55">
+                        <p className="mt-0.5 text-xs leading-relaxed text-emerald-950/55 dark:text-emerald-100/55">
                           {notif.message}
                         </p>
                         <div className="mt-1.5 flex items-center gap-2">
-                          <time className="text-[10px] uppercase tracking-wider text-emerald-950/40">
+                          <time className="text-[10px] uppercase tracking-wider text-emerald-950/40 dark:text-emerald-100/40">
                             {formatRelativeTime(notif.sentAt)}
                           </time>
                           {!notif.read && onMarkAsRead ? (
