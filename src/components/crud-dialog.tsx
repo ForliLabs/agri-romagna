@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { Plus, X, Edit3, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trapFocus, focusFirstElement } from "@/lib/focus-management";
 
 interface FormField {
   name: string;
@@ -35,6 +36,26 @@ export function CrudDialog({
 }: CrudDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Focus first focusable element when dialog opens
+    requestAnimationFrame(() => focusFirstElement(dialogRef.current));
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      trapFocus(e, dialogRef.current);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -66,6 +87,7 @@ export function CrudDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="presentation">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div
+        ref={dialogRef}
         className="relative mx-4 w-full max-w-lg rounded-3xl border border-emerald-950/10 bg-white p-6 shadow-xl dark:border-emerald-50/10 dark:bg-[#162b1e]"
         role="dialog"
         aria-modal="true"
