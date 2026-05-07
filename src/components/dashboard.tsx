@@ -8,7 +8,13 @@ import { CloudSun, Home, Menu, Search, Tractor, Trees, User, X } from "lucide-re
 import { trapFocus } from "@/lib/focus-management";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { CommandPalette, type CommandPaletteItem } from "@/components/command-palette";
+import dynamic from "next/dynamic";
+import type { CommandPaletteItem } from "@/components/command-palette";
+
+const CommandPalette = dynamic(
+  () => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })),
+  { ssr: false }
+);
 import { KeyboardShortcutsHelp, useKeyboardShortcut } from "@/components/keyboard-shortcuts-help";
 import { NotificationCenter } from "@/components/notification-center";
 import type { NotificationLog } from "@/lib/notification-service";

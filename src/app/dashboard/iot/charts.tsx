@@ -1,6 +1,19 @@
 "use client";
 
-import { SensorTrendChart } from "@/components/charts";
+import dynamic from "next/dynamic";
+
+const SensorTrendChart = dynamic(
+  () => import("@/components/charts").then((m) => ({ default: m.SensorTrendChart })),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+function ChartSkeleton() {
+  return (
+    <div className="flex h-[250px] items-center justify-center rounded-3xl border border-emerald-950/10 bg-white/90 p-6">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+    </div>
+  );
+}
 
 interface SensorHistoryPoint {
   timestamp: string;

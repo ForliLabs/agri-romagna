@@ -1,6 +1,23 @@
 "use client";
 
-import { RainfallChart, ForecastChart } from "@/components/charts";
+import dynamic from "next/dynamic";
+
+const RainfallChart = dynamic(
+  () => import("@/components/charts").then((m) => ({ default: m.RainfallChart })),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+const ForecastChart = dynamic(
+  () => import("@/components/charts").then((m) => ({ default: m.ForecastChart })),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+function ChartSkeleton() {
+  return (
+    <div className="flex h-[300px] items-center justify-center rounded-3xl border border-emerald-950/10 bg-white/90 p-6">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+    </div>
+  );
+}
 
 interface RainfallPoint {
   label: string;
