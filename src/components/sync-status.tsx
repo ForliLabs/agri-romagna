@@ -120,7 +120,10 @@ export function SyncStatusIndicator() {
       {icon}
       <span>{label}</span>
       {state.status === "online" && state.lastSync && (
-        <Check className="h-3 w-3 text-emerald-500" />
+        <>
+          <Check className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+          <span className="sr-only">Sincronizzato</span>
+        </>
       )}
     </div>
   );
