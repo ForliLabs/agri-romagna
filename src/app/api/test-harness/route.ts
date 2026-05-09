@@ -5,8 +5,9 @@ import {
   getTestSummary,
   testSuitesStore,
 } from "@/lib/test-harness-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("test-harness:read", async () => {
   const [testSuites, ciBuilds, coverageReports] = await Promise.all([
     testSuitesStore.findAll(),
     ciBuildsStore.findAll(),
@@ -20,4 +21,4 @@ export async function GET() {
     coverageData: getCoverageOverview(),
     summary: getTestSummary(),
   });
-}
+});

@@ -8,8 +8,9 @@ import {
   getFieldDiseaseRisks,
   treatmentRecommendationsStore,
 } from "@/lib/pest-warning-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("pest-warning:read", async () => {
   const risks = await diseaseRisksStore.findAll();
   const recommendations = await treatmentRecommendationsStore.findAll();
 
@@ -23,9 +24,9 @@ export async function GET() {
     recommendations,
     models: diseaseModels,
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth("pest-warning:read", async (request: Request) => {
   const payload = ((await request.json().catch(() => ({}))) ?? {}) as { fieldId?: string };
   const targetFields = payload.fieldId
     ? fields.filter((field) => field.id === payload.fieldId)
@@ -93,4 +94,4 @@ export async function POST(request: Request) {
       Array.from(targetFieldIds).some((fieldId) => item.diseaseRiskId.startsWith(`risk-${fieldId}-`))
     ),
   });
-}
+});

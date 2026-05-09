@@ -9,8 +9,9 @@ import {
   getFederatedSupply,
   getFederationOverview,
 } from "@/lib/federation-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("federation:read", async () => {
   const [federations, members, supply, benchmarks, carbonPools, governance] = await Promise.all([
     federationsStore.findAll(),
     federationMembersStore.findAll(),
@@ -31,4 +32,4 @@ export async function GET() {
     carbonPools,
     governance,
   });
-}
+});

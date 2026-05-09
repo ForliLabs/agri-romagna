@@ -6,8 +6,9 @@ import {
   permissionsStore,
   rolesStore,
 } from "@/lib/rbac-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("rbac:read", async () => {
   const [storedRoles, storedPermissions, isolationRules] = await Promise.all([
     rolesStore.findAll(),
     permissionsStore.findAll(),
@@ -27,4 +28,4 @@ export async function GET() {
     sessions: getActiveSessions(defaultCooperativeId),
     isolationRules,
   });
-}
+});

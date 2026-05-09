@@ -3,6 +3,7 @@ import {
   predictYield,
   yieldPredictionsStore,
 } from "@/lib/yield-prediction";
+import { withAuth } from "@/lib/api-response";
 
 type PredictionPayload = { fieldId?: string };
 
@@ -10,7 +11,7 @@ async function getPredictions() {
   return yieldPredictionsStore.findAll();
 }
 
-export async function GET() {
+export const GET = withAuth("yield:read", async () => {
   const predictions = await getPredictions();
 
   return Response.json({
@@ -28,9 +29,9 @@ export async function GET() {
     predictions,
     models: cropPhenologyModels,
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth("yield:read", async (request: Request) => {
   const body = (await request.json().catch(() => ({}))) as PredictionPayload;
 
   if (body.fieldId) {
@@ -53,4 +54,4 @@ export async function POST(request: Request) {
     },
     predictions,
   });
-}
+});

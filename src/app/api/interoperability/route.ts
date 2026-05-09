@@ -1,5 +1,6 @@
 import type { ExportFormat, ExportJob, ExportJobStatus, ExportScope } from "@/lib/fmis-interop-data";
 import { exportJobsStore, getInteropDashboard } from "@/lib/fmis-interop-data";
+import { withAuth } from "@/lib/api-response";
 
 const exportFormats: ExportFormat[] = [
   "isobus_iso11783",
@@ -12,11 +13,11 @@ const exportFormats: ExportFormat[] = [
 const exportScopes: ExportScope[] = ["field", "farm", "cooperative"];
 const exportStatuses: ExportJobStatus[] = ["pending", "processing", "completed", "failed"];
 
-export async function GET() {
+export const GET = withAuth("interoperability:read", async () => {
   return Response.json(getInteropDashboard());
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth("interoperability:write", async (request: Request) => {
   const payload = (await request.json()) as Partial<ExportJob>;
 
   if (!payload.format || !payload.scope) {
@@ -53,4 +54,4 @@ export async function POST(request: Request) {
 
   const createdJob = await exportJobsStore.create(exportJob);
   return Response.json({ exportJob: createdJob }, { status: 201 });
-}
+});

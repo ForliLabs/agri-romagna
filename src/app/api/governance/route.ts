@@ -10,6 +10,7 @@ import {
   type ProposalCategory,
   type ProposalStatus,
 } from "@/lib/governance-data";
+import { withAuth } from "@/lib/api-response";
 
 type ProposalPayload = Partial<Proposal> & {
   title?: string;
@@ -19,7 +20,7 @@ type ProposalPayload = Partial<Proposal> & {
   category?: ProposalCategory;
 };
 
-export async function GET() {
+export const GET = withAuth("governance:read", async () => {
   const proposals = await proposalsStore.findAll();
   const agmCalendar = await agmEventsStore.findAll();
   const memberProfiles = await memberProfilesStore.findAll();
@@ -37,9 +38,9 @@ export async function GET() {
       ...getVotingResults(proposal.id),
     })),
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth("governance:write", async (request: Request) => {
   const payload = (await request.json()) as ProposalPayload;
 
   if (!payload.title || !payload.description || !payload.proposedBy) {
@@ -64,9 +65,9 @@ export async function POST(request: Request) {
   await proposalsStore.create(proposal);
 
   return Response.json({ proposal }, { status: 201 });
-}
+});
 
-export async function PUT(request: Request) {
+export const PUT = withAuth("governance:write", async (request: Request) => {
   const body = (await request.json()) as { id: string } & Partial<Proposal>;
 
   if (!body.id) {
@@ -82,9 +83,9 @@ export async function PUT(request: Request) {
   const updated = await proposalsStore.update(id, updates);
 
   return Response.json({ proposal: updated });
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = withAuth("governance:write", async (request: Request) => {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
 
@@ -98,4 +99,4 @@ export async function DELETE(request: Request) {
   }
 
   return Response.json({ deleted: true, id });
-}
+});

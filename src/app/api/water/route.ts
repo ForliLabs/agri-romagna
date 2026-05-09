@@ -9,8 +9,9 @@ import {
   waterQuotasStore,
 } from "@/lib/water-management-data";
 import { irrigationScheduleQueries } from "@/lib/data-layer";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("water:read", async () => {
   const schedules = await irrigationScheduleQueries.findAll();
   const balances = await soilWaterBalanceStore.findAll();
   const quotas = await waterQuotasStore.findAll();
@@ -27,7 +28,7 @@ export async function GET() {
       .filter(Boolean),
     efficiency: getWaterEfficiencyMetrics(),
   });
-}
+});
 
 export async function POST(request: Request) {
   const payload = await request.json();

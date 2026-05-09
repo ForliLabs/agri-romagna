@@ -7,8 +7,9 @@ import {
   knowledgeQueriesStore,
   knowledgeRelationsStore,
 } from "@/lib/knowledge-graph-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("knowledge-graph:read", async () => {
   const [entities, relations, queries, dossiers, farmers] = await Promise.all([
     knowledgeEntitiesStore.findAll(),
     knowledgeRelationsStore.findAll(),
@@ -26,4 +27,4 @@ export async function GET() {
     seasonalDigests: getSeasonalDigests(),
     farmers,
   });
-}
+});

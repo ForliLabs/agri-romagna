@@ -6,8 +6,9 @@ import {
   insightTemplatesStore,
   nlQueriesStore,
 } from "@/lib/insight-engine-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("insights:read", async () => {
   const [templates, insightResults, alerts, queries] = await Promise.all([
     insightTemplatesStore.findAll(),
     insightResultsStore.findAll(),
@@ -23,4 +24,4 @@ export async function GET() {
     activeAlerts: getActiveAlerts(),
     queries,
   });
-}
+});

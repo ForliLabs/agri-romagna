@@ -7,6 +7,7 @@ import {
   getPerformanceTrends,
 } from "@/lib/benchmarking-data";
 import { farmBenchmarkQueries } from "@/lib/data-layer";
+import { withAuth } from "@/lib/api-response";
 
 type BenchmarkRecord = {
   id: string;
@@ -22,7 +23,7 @@ type BenchmarkRecord = {
 
 type BenchmarkPayload = Partial<BenchmarkRecord> & { farmId?: string; period?: string };
 
-export async function GET() {
+export const GET = withAuth("benchmarking:read", async () => {
   const benchmarks = (await farmBenchmarkQueries.findAll()) as BenchmarkRecord[];
 
   return Response.json({
@@ -42,9 +43,9 @@ export async function GET() {
     performanceTrends: getPerformanceTrends(),
     participantCount: farmBenchmarks.length,
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth("benchmarking:read", async (request: Request) => {
   const payload = (await request.json()) as BenchmarkPayload;
 
   if (!payload.farmId || !payload.period) {
@@ -63,4 +64,4 @@ export async function POST(request: Request) {
   });
 
   return Response.json({ benchmark }, { status: 201 });
-}
+});

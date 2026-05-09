@@ -4,8 +4,9 @@ import {
   dataProductStore,
   getAPIMetrics,
 } from "@/lib/marketplace-api-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("data-marketplace:read", async () => {
   const [endpoints, consumers, dataProducts] = await Promise.all([
     apiEndpointStore.findAll(),
     apiConsumerStore.findAll(),
@@ -18,4 +19,4 @@ export async function GET() {
     consumers,
     dataProducts,
   });
-}
+});

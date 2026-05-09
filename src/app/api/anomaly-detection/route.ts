@@ -8,8 +8,9 @@ import {
   getDetectionModels,
   detectionModelsStore,
 } from "@/lib/anomaly-detection-data";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("anomaly:read", async () => {
   const [streams, anomalies, correlations, models, digests] = await Promise.all([
     anomalyStreamsStore.findAll(),
     anomaliesStore.findAll(),
@@ -28,4 +29,4 @@ export async function GET() {
     detectionModels: models,
     digests,
   });
-}
+});

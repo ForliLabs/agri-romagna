@@ -5,15 +5,16 @@ import {
   publishWeatherUpdate,
 } from "@/lib/intelligence-fabric";
 import { getEventBusOverview } from "@/lib/event-bus";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("intelligence:read", async () => {
   return Response.json({
     ...getIntelligenceOverview(),
     crossModuleEventBus: getEventBusOverview(),
   });
-}
+});
 
-export async function POST() {
+export const POST = withAuth("intelligence:read", async () => {
   publishWeatherUpdate();
   publishSensorReadings();
   publishNDVIData();
@@ -22,4 +23,4 @@ export async function POST() {
     ...getIntelligenceOverview(),
     crossModuleEventBus: getEventBusOverview(),
   });
-}
+});

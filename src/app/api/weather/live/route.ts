@@ -5,8 +5,9 @@ import {
   generateWeatherAlerts,
   generateNotifications,
 } from "@/lib/weather-service";
+import { withAuth } from "@/lib/api-response";
 
-export async function GET() {
+export const GET = withAuth("weather:read", async () => {
   try {
     const [current, forecast, rivers, alerts] = await Promise.all([
       fetchCurrentWeather(),
@@ -35,4 +36,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
