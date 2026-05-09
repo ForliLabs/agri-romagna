@@ -9,8 +9,15 @@ export const GET = withErrorHandling(async (request: Request) => {
   const { denied } = await authorizeRoute(request, "fields:read");
   if (denied) return denied;
 
+  const url = new URL(request.url);
+  const cropFilter = url.searchParams.get("crop");
+  const statusFilter = url.searchParams.get("status");
+  const searchQuery = url.searchParams.get("q");
+  const municipalityFilter = url.searchParams.get("municipality");
+
   const dbFields = await fieldQueries.findOperationalOverview();
-  const fields = dbFields.length
+  type FieldRecord = { id: string; name: string; crop: string; areaHa: number; status: string; plantingDate: unknown; municipality: string; expectedHarvest: unknown; expectedVolume: number; health: string; irrigation: string; notes: string; farm: unknown; sensorCount: number; openLots: number; nextHarvestDeclaration: unknown };
+  let fields: FieldRecord[] = dbFields.length
     ? dbFields.map((field) => ({
         id: field.id,
         name: field.name,
@@ -37,6 +44,25 @@ export const GET = withErrorHandling(async (request: Request) => {
         nextHarvestDeclaration: null,
       }));
 
+  if (cropFilter) {
+    fields = fields.filter((f) => f.crop.toLowerCase().includes(cropFilter.toLowerCase()));
+  }
+  if (statusFilter) {
+    fields = fields.filter((f) => f.status.toLowerCase() === statusFilter.toLowerCase());
+  }
+  if (municipalityFilter) {
+    fields = fields.filter((f) => f.municipality.toLowerCase().includes(municipalityFilter.toLowerCase()));
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    fields = fields.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.crop.toLowerCase().includes(q) ||
+        f.notes.toLowerCase().includes(q)
+    );
+  }
+
   return createSuccessResponse(
     {
       farm,
@@ -49,12 +75,12 @@ export const GET = withErrorHandling(async (request: Request) => {
         connectedSensors: fields.reduce((sum, field) => sum + field.sensorCount, 0),
       },
     },
-    { meta: { domain: "fields" } }
+    { meta: { domain: "fields", filters: { crop: cropFilter, status: statusFilter, q: searchQuery, municipality: municipalityFilter } } }
   );
 });
 
 export const POST = withErrorHandling(async (request: Request) => {
-  const { denied } = await authorizeRoute(request, "fields:write");
+  const { user, denied } = await authorizeRoute(request, "fields:write");
   if (denied) return denied;
 
   const parsed = await validateBody(request, createFieldSchema);
@@ -69,7 +95,7 @@ export const POST = withErrorHandling(async (request: Request) => {
     health: parsed.data.health ?? "Monitoraggio iniziale impostato",
     irrigation: parsed.data.irrigation ?? "Da configurare",
     notes: parsed.data.notes ?? "Nuovo appezzamento registrato via API.",
-    farmId: parsed.data.farmId ?? "azienda-tondini",
+    farmId: parsed.data.farmId ?? user?.farmId ?? "azienda-tondini",
   });
 
   return createSuccessResponse({ field }, { status: 201, meta: { domain: "fields" } });

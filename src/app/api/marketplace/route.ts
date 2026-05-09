@@ -18,12 +18,28 @@ export const GET = withErrorHandling(async (request: Request) => {
 
   const url = new URL(request.url);
   const category = url.searchParams.get("category");
+  const searchQuery = url.searchParams.get("q");
+  const organic = url.searchParams.get("organic");
+  const availability = url.searchParams.get("availability");
 
   const [allProducts, allOrders] = await Promise.all([productsStore.findAll(), ordersStore.findAll()]);
 
-  const products = category
-    ? allProducts.filter((p) => p.category === category)
-    : allProducts;
+  let products = allProducts;
+  if (category) {
+    products = products.filter((p) => p.category === category);
+  }
+  if (organic === "true") {
+    products = products.filter((p) => p.organic);
+  }
+  if (availability) {
+    products = products.filter((p) => p.availability === availability);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    products = products.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+    );
+  }
 
   const totalRevenue = allOrders.reduce((sum, order) => sum + order.totalEur, 0);
 
