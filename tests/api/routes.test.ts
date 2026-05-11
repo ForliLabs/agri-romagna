@@ -1,0 +1,161 @@
+import { describe, it, expect, vi } from "vitest";
+
+// Mock next/headers (cookies) which is not available in unit tests
+vi.mock("next/headers", () => ({
+  cookies: () => ({
+    get: () => undefined,
+    set: () => {},
+    delete: () => {},
+  }),
+}));
+
+// Mock getUserFromRequest to return a user with correct RBAC role
+const mockUser = {
+  id: "user-tondini",
+  email: "marco@tondini.farm",
+  name: "Marco Tondini",
+  role: "cooperative_admin",
+  cooperativeId: "coop-romagna-unita",
+  farmId: "azienda-tondini",
+  phone: "+39 347 123 4567",
+  avatarInitials: "MT",
+};
+
+vi.mock("@/lib/auth-service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/auth-service")>();
+  return {
+    ...actual,
+    getUserFromRequest: vi.fn(async (request: Request) => {
+      const authHeader = request.headers.get("Authorization");
+      if (authHeader === "Bearer test-valid-token") {
+        return mockUser;
+      }
+      return null;
+    }),
+  };
+});
+
+function authedRequest(url: string, options?: RequestInit): Request {
+  return new Request(url, {
+    ...options,
+    headers: {
+      Authorization: "Bearer test-valid-token",
+      ...(options?.headers ?? {}),
+    },
+  });
+}
+
+function unauthRequest(url: string, options?: RequestInit): Request {
+  return new Request(url, options);
+}
+
+describe("API /api/health", () => {
+  it("GET returns 200 with health status", async () => {
+    const { GET } = await import("@/app/api/health/route");
+    const request = unauthRequest("http://localhost:3000/api/health");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body).toHaveProperty("status");
+  });
+
+  it("GET ?probe=liveness returns alive flag", async () => {
+    const { GET } = await import("@/app/api/health/route");
+    const request = unauthRequest("http://localhost:3000/api/health?probe=liveness");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body).toHaveProperty("alive", true);
+  });
+});
+
+describe("API /api/auth", () => {
+  it("POST login with invalid credentials returns 401", async () => {
+    const { POST } = await import("@/app/api/auth/route");
+    const request = new Request("http://localhost:3000/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "login",
+        email: "nobody@example.com",
+        password: "wrongpassword",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(401);
+
+    const body = await response.json();
+    expect(body.success).toBe(false);
+  });
+
+  it("POST login with missing fields returns 400", async () => {
+    const { POST } = await import("@/app/api/auth/route");
+    const request = new Request("http://localhost:3000/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "login" }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("GET /api/auth with valid token returns user", async () => {
+    const { GET } = await import("@/app/api/auth/route");
+    const request = authedRequest("http://localhost:3000/api/auth");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.user).toHaveProperty("email", "marco@tondini.farm");
+  });
+
+  it("GET /api/auth without token returns 401", async () => {
+    const { GET } = await import("@/app/api/auth/route");
+    const request = unauthRequest("http://localhost:3000/api/auth");
+    const response = await GET(request);
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("API /api/fields", () => {
+  it("GET returns 401 without auth", async () => {
+    const { GET } = await import("@/app/api/fields/route");
+    const request = unauthRequest("http://localhost:3000/api/fields");
+    const response = await GET(request);
+    expect(response.status).toBe(401);
+  });
+
+  it("GET returns fields data with valid auth", async () => {
+    const { GET } = await import("@/app/api/fields/route");
+    const request = authedRequest("http://localhost:3000/api/fields");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body).toHaveProperty("data");
+    expect(body.data).toHaveProperty("fields");
+    expect(body.data).toHaveProperty("summary");
+    expect(body).toHaveProperty("meta");
+  });
+
+  it("POST without required fields returns 400", async () => {
+    const { POST } = await import("@/app/api/fields/route");
+    const request = authedRequest("http://localhost:3000/api/fields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("DELETE without id returns 400", async () => {
+    const { DELETE } = await import("@/app/api/fields/route");
+    const request = authedRequest("http://localhost:3000/api/fields");
+    const response = await DELETE(request);
+    expect(response.status).toBe(400);
+  });
+});
