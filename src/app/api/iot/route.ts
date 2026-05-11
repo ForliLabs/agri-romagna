@@ -20,11 +20,12 @@ alertsStore.seed(sensorAlerts.map((a) => ({ ...a })));
  * POST /api/iot — Register sensors, submit readings, manage alert rules.
  */
 export const GET = withErrorHandling(async (request: Request) => {
-  const { denied } = await authorizeRoute(request, "iot:read");
+  const { user, denied } = await authorizeRoute(request, "iot:read");
   if (denied) return denied;
 
   const url = new URL(request.url);
   const sensorId = url.searchParams.get("sensorId");
+  const farmId = user?.farmId ?? "azienda-tondini";
 
   const devices = await sensorsStore.findAll();
   const latest = Object.fromEntries(iotSnapshot.latestReadings);
@@ -45,7 +46,7 @@ export const GET = withErrorHandling(async (request: Request) => {
         latestReading: latest[sensorId] ?? null,
         rules,
         alerts: alerts.sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
-        mqttTopic: mqttTopic("azienda-tondini", device.fieldId, device.id),
+        mqttTopic: mqttTopic(farmId, device.fieldId, device.id),
       },
       { meta: { domain: "iot" } }
     );
@@ -81,8 +82,9 @@ export const GET = withErrorHandling(async (request: Request) => {
 });
 
 export const POST = withErrorHandling(async (request: Request) => {
-  const { denied } = await authorizeRoute(request, "iot:write");
+  const { user, denied } = await authorizeRoute(request, "iot:write");
   if (denied) return denied;
+  const farmId = user?.farmId ?? "azienda-tondini";
 
   const body = (await request.json()) as {
     action: "register-sensor" | "submit-reading" | "create-rule" | "update-rule" | "acknowledge-alert";
@@ -110,7 +112,7 @@ export const POST = withErrorHandling(async (request: Request) => {
     return createSuccessResponse(
       {
         sensor,
-        mqttTopic: mqttTopic("azienda-tondini", sensor.fieldId, sensor.id),
+        mqttTopic: mqttTopic(farmId, sensor.fieldId, sensor.id),
         mqttConfig,
       },
       { status: 201, meta: { domain: "iot" } }
