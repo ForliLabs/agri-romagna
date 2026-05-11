@@ -7,7 +7,7 @@ A comprehensive Next.js platform for Italian agricultural cooperatives — manag
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748)](https://prisma.io/)
-[![Tests](https://img.shields.io/badge/tests-67-green)]()
+[![Tests](https://img.shields.io/badge/tests-passing-green)]()
 [![License](https://img.shields.io/badge/license-private-red)]()
 
 ---
