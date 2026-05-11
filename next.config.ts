@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(process.cwd(), ".."),
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
   async headers() {
     return [
       {
