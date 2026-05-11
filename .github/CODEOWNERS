@@ -1,0 +1,21 @@
+# CODEOWNERS — Default reviewers for AgriRomagna
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for the entire repository
+* @josedab
+
+# Infrastructure & CI
+.github/ @josedab
+Dockerfile @josedab
+docker-compose.yml @josedab
+
+# Database schema & migrations
+prisma/ @josedab
+
+# Core application
+src/lib/ @josedab
+src/app/api/ @josedab
+src/middleware.ts @josedab
+
+# Tests
+tests/ @josedab
