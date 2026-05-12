@@ -1,6 +1,6 @@
-import { InMemoryStore } from "@/lib/db";
-
 // --- Auth & User Types ---
+// Legacy type exports retained for backward compatibility with governance-data
+// and other modules. New code should use types from `@/lib/auth-service`.
 
 /**
  * @deprecated Legacy role type with old vocabulary.
@@ -57,7 +57,7 @@ export interface AuthResponse {
   error?: string;
 }
 
-// --- Seed Data ---
+// --- Seed Data (used by governance-data for demo/mock UI) ---
 
 export const users: AuthUser[] = [
   {
@@ -116,37 +116,3 @@ export const cooperatives: Cooperative[] = [
     plan: "cooperativa",
   },
 ];
-
-// Demo auth: in production, replace with NextAuth.js / Auth.js
-const DEMO_PASSWORD = "agriromagna2025";
-
-export function authenticateUser(email: string, password: string): AuthResponse {
-  if (password !== DEMO_PASSWORD) {
-    return { success: false, error: "Credenziali non valide." };
-  }
-
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return { success: false, error: "Utente non trovato." };
-  }
-
-  const token = `demo-token-${user.id}-${Date.now()}`;
-  return { success: true, user, token };
-}
-
-export function getUserByToken(token: string): AuthUser | undefined {
-  const match = token.match(/^demo-token-(user-\w+)-/);
-  if (!match) return undefined;
-  return users.find((u) => u.id === match[1]);
-}
-
-export function authorizeRole(user: AuthUser, requiredRoles: LegacyUserRole[]): boolean {
-  return requiredRoles.includes(user.role);
-}
-
-export function getCooperativeMembers(cooperativeId: string): AuthUser[] {
-  return users.filter((u) => u.cooperativeId === cooperativeId);
-}
-
-export const usersStore = new InMemoryStore<AuthUser>();
-usersStore.seed(users.map((u) => ({ ...u })));
