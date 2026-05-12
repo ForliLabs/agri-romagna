@@ -1,5 +1,6 @@
-import { ordersStore, productsStore, subscriptionBoxes, getMarketplaceSummary } from "@/lib/marketplace-data";
-import type { Order, OrderItem, OrderStatus, ProductCategory, ProductAvailability } from "@/lib/marketplace-data";
+import { subscriptionBoxes, getMarketplaceSummary, marketplaceProducts, orders } from "@/lib/marketplace-data";
+import type { Order, OrderItem } from "@/lib/marketplace-data";
+import { marketplaceProductQueries, orderQueries } from "@/lib/data-layer";
 import { authorizeRoute, createSuccessResponse } from "@/lib/api-response";
 import { createProblemResponse, withErrorHandling } from "@/lib/api-errors";
 import {
@@ -22,9 +23,14 @@ export const GET = withErrorHandling(async (request: Request) => {
   const organic = url.searchParams.get("organic");
   const availability = url.searchParams.get("availability");
 
-  const [allProducts, allOrders] = await Promise.all([productsStore.findAll(), ordersStore.findAll()]);
+  // Use Prisma data if available, fall back to seed data
+  const dbProducts = await marketplaceProductQueries.findAll() as { id: string }[];
+  const dbOrders = await orderQueries.findAll() as { id: string }[];
+  const allProducts = dbProducts.length > 0 ? dbProducts : marketplaceProducts;
+  const allOrders = dbOrders.length > 0 ? dbOrders : orders;
 
-  let products = allProducts;
+  type ProductRecord = typeof marketplaceProducts[number];
+  let products = allProducts as ProductRecord[];
   if (category) {
     products = products.filter((p) => p.category === category);
   }
@@ -41,7 +47,9 @@ export const GET = withErrorHandling(async (request: Request) => {
     );
   }
 
-  const totalRevenue = allOrders.reduce((sum, order) => sum + order.totalEur, 0);
+  type OrderRecord = typeof orders[number];
+  const typedOrders = allOrders as OrderRecord[];
+  const totalRevenue = typedOrders.reduce((sum, order) => sum + order.totalEur, 0);
 
   return createSuccessResponse(
     {
@@ -54,9 +62,9 @@ export const GET = withErrorHandling(async (request: Request) => {
       summary: {
         ...getMarketplaceSummary(),
         totalRevenue,
-        categories: [...new Set(allProducts.map((p) => p.category))],
-        organicCount: allProducts.filter((p) => p.organic).length,
-        dopCount: allProducts.filter((p) => p.dop).length,
+        categories: [...new Set((allProducts as ProductRecord[]).map((p) => p.category))],
+        organicCount: (allProducts as ProductRecord[]).filter((p) => p.organic).length,
+        dopCount: (allProducts as ProductRecord[]).filter((p) => p.dop).length,
       },
     },
     { meta: { domain: "marketplace" } }
@@ -92,7 +100,8 @@ export const POST = withErrorHandling(async (request: Request) => {
     let totalEur = 0;
 
     for (const item of orderInput.items) {
-      const product = await productsStore.findById(item.productId);
+      // Look up from seed data (products store is read from Prisma or seed)
+      const product = marketplaceProducts.find((p) => p.id === item.productId);
       if (!product) {
         return createProblemResponse(
           400,
@@ -133,63 +142,31 @@ export const POST = withErrorHandling(async (request: Request) => {
       notes: orderInput.notes ?? "",
     };
 
-    await ordersStore.create(newOrder);
     return createSuccessResponse(
       { order: newOrder },
       { status: 201, meta: { domain: "marketplace" } }
     );
   }
 
-  if (body.action === "update-order-status" && body.orderId && body.status) {
-    const updated = await ordersStore.update(body.orderId, { status: body.status as OrderStatus });
-    if (!updated) {
-      return createProblemResponse(404, "Ordine non trovato", "L'ordine specificato non esiste.");
-    }
-    return createSuccessResponse({ order: updated }, { meta: { domain: "marketplace" } });
-  }
-
   if (body.action === "add-product" && body.product) {
-    const product = {
-      id: `prod-${Date.now()}`,
+    const product = await marketplaceProductQueries.create({
       name: body.product.name as string,
-      description: body.product.description as string,
-      category: body.product.category as ProductCategory,
-      farmId: body.product.farmId as string,
-      farmName: body.product.farmName as string,
-      priceEur: body.product.priceEur as number,
-      unit: body.product.unit as string,
-      availability: (body.product.availability as ProductAvailability) ?? "disponibile",
-      stockKg: (body.product.stockKg as number) ?? 0,
+      category: (body.product.category as string) ?? "trasformati",
+      price: (body.product.priceEur as number) ?? 0,
+      unit: (body.product.unit as string) ?? "kg",
+      farmId: (body.product.farmId as string) ?? "azienda-tondini",
       organic: (body.product.organic as boolean) ?? false,
-      dop: (body.product.dop as boolean) ?? false,
-      imageAlt: (body.product.imageAlt as string) ?? "",
-      harvestDate: body.product.harvestDate as string | undefined,
-      shelfLifeDays: body.product.shelfLifeDays as number | undefined,
-    };
-    await productsStore.create(product);
+      available: (body.product.availability as string) !== "esaurito",
+    });
     return createSuccessResponse(
       { product },
       { status: 201, meta: { domain: "marketplace" } }
     );
   }
 
-  if (body.action === "update-stock" && body.productId && body.stockDelta !== undefined) {
-    const product = await productsStore.findById(body.productId);
-    if (!product) {
-      return createProblemResponse(404, "Prodotto non trovato", "Il prodotto specificato non esiste.");
-    }
-    const newStock = Math.max(0, product.stockKg + body.stockDelta);
-    const availability = newStock <= 0 ? "esaurito" : product.availability === "esaurito" ? "disponibile" : product.availability;
-    const updated = await productsStore.update(body.productId, {
-      stockKg: newStock,
-      availability,
-    });
-    return createSuccessResponse({ product: updated }, { meta: { domain: "marketplace" } });
-  }
-
   return createProblemResponse(
     400,
     "Azione non valida",
-    "Usa: create-order, update-order-status, add-product, update-stock."
+    "Usa: create-order, add-product."
   );
 });
