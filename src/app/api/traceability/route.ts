@@ -6,7 +6,6 @@ import {
   productLots,
   lotsStore,
   traceabilityEvents,
-  qualityRecords,
   generateQRSVG,
 } from "@/lib/traceability-data";
 

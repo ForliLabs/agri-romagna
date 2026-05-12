@@ -19,15 +19,6 @@ import { createCarbonEntrySchema } from "@/lib/validators/schemas";
 const emissionSources = new Set<string>(emissionFactors.map((factor) => factor.key));
 const sequestrationSources = new Set<string>(sequestrationFactors.map((factor) => factor.key));
 
-type CarbonPayload = Partial<CarbonEntry> & {
-  fieldId?: string;
-  date?: string;
-  category?: CarbonCategory;
-  source?: CarbonSource;
-  quantity?: number;
-  farmId?: string;
-};
-
 // Map Prisma CarbonEntry → carbon-data CarbonEntry interface
 function toCarbonEntry(row: {
   id: string;

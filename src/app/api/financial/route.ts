@@ -14,20 +14,6 @@ import { costEntryQueries, revenueEntryQueries } from "@/lib/data-layer";
 import { validateBody } from "@/lib/api-errors";
 import { createCostEntrySchema, createRevenueEntrySchema } from "@/lib/validators/schemas";
 
-type FinancialPayload = {
-  type?: "cost" | "revenue";
-  id?: string;
-  fieldId?: string;
-  farmId?: string;
-  date?: string;
-  category?: CostCategory;
-  source?: RevenueSource;
-  description?: string;
-  amount?: number;
-  quantity?: number;
-  unit?: string;
-};
-
 // Map Prisma CostEntry → financial-data CostEntry interface
 function toCostEntry(row: { id: string; farmId: string; category: string; description: string; amount: number; date: Date; fieldId: string | null }): CostEntry {
   return {
