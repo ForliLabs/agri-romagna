@@ -1,19 +1,13 @@
-import { alertRules, sensorAlerts, sensorsStore, sensorReadings, getLatestReadings, sensorTypeLabels, sensorTypeUnits, mqttConfig, mqttTopic } from "@/lib/iot-data";
+import { alertRules, sensorAlerts, sensorReadings, sensorTypeLabels, sensorTypeUnits, mqttConfig, mqttTopic, sensorDevices } from "@/lib/iot-data";
 import type { SensorDevice, SensorReading, AlertRule, SensorAlert } from "@/lib/iot-data";
-import { InMemoryStore } from "@/lib/db";
+import { sensorDeviceQueries } from "@/lib/data-layer";
 import { authorizeRoute, createSuccessResponse } from "@/lib/api-response";
 import { createProblemResponse, withErrorHandling } from "@/lib/api-errors";
 import { iotAreaHealth, iotAttentionList, iotSnapshot } from "@/lib/operations-insights";
 
-// Mutable stores for readings, rules, and alerts
-const readingsStore = new InMemoryStore<SensorReading>();
-readingsStore.seed(sensorReadings.map((r) => ({ ...r })));
-
-const alertRulesStore = new InMemoryStore<AlertRule>();
-alertRulesStore.seed(alertRules.map((r) => ({ ...r })));
-
-const alertsStore = new InMemoryStore<SensorAlert>();
-alertsStore.seed(sensorAlerts.map((a) => ({ ...a })));
+// Alert rules and alerts remain in-memory (no Prisma model yet)
+const alertRulesList = [...alertRules];
+const alertsList = [...sensorAlerts];
 
 /**
  * GET /api/iot — Returns devices, readings, alerts, and configuration.
@@ -27,17 +21,19 @@ export const GET = withErrorHandling(async (request: Request) => {
   const sensorId = url.searchParams.get("sensorId");
   const farmId = user?.farmId ?? "azienda-tondini";
 
-  const devices = await sensorsStore.findAll();
+  // Use Prisma data if available, fall back to seed data
+  const dbDevices = await sensorDeviceQueries.findAll() as { id: string }[];
+  const devices = dbDevices.length > 0 ? dbDevices as unknown as SensorDevice[] : sensorDevices;
   const latest = Object.fromEntries(iotSnapshot.latestReadings);
 
   if (sensorId) {
-    const device = await sensorsStore.findById(sensorId);
+    const device = devices.find((d) => d.id === sensorId);
     if (!device) {
       return createProblemResponse(404, "Sensore non trovato", "Il sensore specificato non esiste.");
     }
-    const readings = await readingsStore.filter((r) => r.sensorId === sensorId);
-    const rules = await alertRulesStore.filter((r) => r.sensorId === sensorId);
-    const alerts = await alertsStore.filter((a) => a.sensorId === sensorId);
+    const readings = sensorReadings.filter((r) => r.sensorId === sensorId);
+    const rules = alertRulesList.filter((r) => r.sensorId === sensorId);
+    const alerts = alertsList.filter((a) => a.sensorId === sensorId);
 
     return createSuccessResponse(
       {
@@ -56,8 +52,8 @@ export const GET = withErrorHandling(async (request: Request) => {
     {
       devices,
       latestReadings: latest,
-      alertRules: await alertRulesStore.findAll(),
-      alerts: await alertsStore.findAll(),
+      alertRules: alertRulesList,
+      alerts: alertsList,
       fieldHealth: iotAreaHealth,
       attentionSensors: iotAttentionList,
       mqttConfig,
@@ -84,7 +80,7 @@ export const GET = withErrorHandling(async (request: Request) => {
 export const POST = withErrorHandling(async (request: Request) => {
   const { user, denied } = await authorizeRoute(request, "iot:write");
   if (denied) return denied;
-  const farmId = user?.farmId ?? "azienda-tondini";
+  const _farmId = user?.farmId ?? "azienda-tondini";
 
   const body = (await request.json()) as {
     action: "register-sensor" | "submit-reading" | "create-rule" | "update-rule" | "acknowledge-alert";
@@ -96,23 +92,17 @@ export const POST = withErrorHandling(async (request: Request) => {
   };
 
   if (body.action === "register-sensor" && body.sensor) {
-    const sensor: SensorDevice = {
-      id: `sensor-${Date.now()}`,
+    const sensor = await sensorDeviceQueries.create({
       name: body.sensor.name as string,
-      type: body.sensor.type as SensorDevice["type"],
+      type: body.sensor.type as string,
       fieldId: body.sensor.fieldId as string,
-      fieldName: body.sensor.fieldName as string,
-      protocol: (body.sensor.protocol as SensorDevice["protocol"]) ?? "lorawan",
       status: "online",
-      batteryPercent: 100,
-      lastSeen: new Date().toISOString(),
+      batteryLevel: 100,
       firmware: (body.sensor.firmware as string) ?? "v1.0.0",
-    };
-    await sensorsStore.create(sensor);
+    });
     return createSuccessResponse(
       {
         sensor,
-        mqttTopic: mqttTopic(farmId, sensor.fieldId, sensor.id),
         mqttConfig,
       },
       { status: 201, meta: { domain: "iot" } }
@@ -120,7 +110,9 @@ export const POST = withErrorHandling(async (request: Request) => {
   }
 
   if (body.action === "submit-reading" && body.reading) {
-    const sensor = await sensorsStore.findById(body.reading.sensorId);
+    const dbDevices = await sensorDeviceQueries.findAll() as { id: string }[];
+    const allDevices = dbDevices.length > 0 ? dbDevices : sensorDevices;
+    const sensor = allDevices.find((d) => d.id === body.reading!.sensorId) as SensorDevice | undefined;
     if (!sensor) {
       return createProblemResponse(404, "Sensore non trovato", "Il sensore specificato non esiste.");
     }
@@ -132,17 +124,10 @@ export const POST = withErrorHandling(async (request: Request) => {
       value: body.reading.value,
       unit: body.reading.unit ?? sensorTypeUnits[sensor.type],
     };
-    await readingsStore.create(reading);
-
-    // Update sensor last seen
-    await sensorsStore.update(sensor.id, {
-      lastSeen: reading.timestamp,
-      status: "online",
-    });
 
     // Check alert rules
     const triggeredAlerts: SensorAlert[] = [];
-    const rules = await alertRulesStore.filter((r) => r.sensorId === sensor.id && r.active);
+    const rules = alertRulesList.filter((r) => r.sensorId === sensor.id && r.active);
     for (const rule of rules) {
       const triggered =
         (rule.condition === "above" && reading.value > rule.threshold) ||
@@ -162,8 +147,8 @@ export const POST = withErrorHandling(async (request: Request) => {
           } soglia ${rule.threshold} ${rule.unit}. Regola: ${rule.name}.`,
           acknowledged: false,
         };
-        await alertsStore.create(alert);
-        await alertRulesStore.update(rule.id, { lastTriggered: reading.timestamp });
+        alertsList.push(alert);
+        rule.lastTriggered = reading.timestamp;
         triggeredAlerts.push(alert);
       }
     }
@@ -184,24 +169,26 @@ export const POST = withErrorHandling(async (request: Request) => {
       unit: body.rule.unit as string,
       active: true,
     };
-    await alertRulesStore.create(rule);
+    alertRulesList.push(rule);
     return createSuccessResponse({ rule }, { status: 201, meta: { domain: "iot" } });
   }
 
   if (body.action === "update-rule" && body.ruleId) {
-    const updated = await alertRulesStore.update(body.ruleId, body.rule ?? {});
-    if (!updated) {
+    const ruleIndex = alertRulesList.findIndex((r) => r.id === body.ruleId);
+    if (ruleIndex === -1) {
       return createProblemResponse(404, "Regola non trovata", "La regola specificata non esiste.");
     }
-    return createSuccessResponse({ rule: updated }, { meta: { domain: "iot" } });
+    Object.assign(alertRulesList[ruleIndex], body.rule ?? {});
+    return createSuccessResponse({ rule: alertRulesList[ruleIndex] }, { meta: { domain: "iot" } });
   }
 
   if (body.action === "acknowledge-alert" && body.alertId) {
-    const updated = await alertsStore.update(body.alertId, { acknowledged: true });
-    if (!updated) {
+    const alert = alertsList.find((a) => a.id === body.alertId);
+    if (!alert) {
       return createProblemResponse(404, "Alert non trovato", "L'alert specificato non esiste.");
     }
-    return createSuccessResponse({ alert: updated }, { meta: { domain: "iot" } });
+    alert.acknowledged = true;
+    return createSuccessResponse({ alert }, { meta: { domain: "iot" } });
   }
 
   return createProblemResponse(
@@ -220,13 +207,13 @@ export const PUT = withErrorHandling(async (request: Request) => {
     return createProblemResponse(400, "ID mancante", "L'ID del sensore è obbligatorio.");
   }
 
-  const existing = await sensorsStore.findById(body.id);
+  const existing = await sensorDeviceQueries.findById(body.id);
   if (!existing) {
     return createProblemResponse(404, "Sensore non trovato", "Il sensore specificato non esiste.");
   }
 
   const { id, ...updates } = body;
-  const updated = await sensorsStore.update(id, updates as Partial<SensorDevice>);
+  const updated = await sensorDeviceQueries.update(id, updates);
   return createSuccessResponse({ sensor: updated }, { meta: { domain: "iot" } });
 });
 
@@ -240,10 +227,12 @@ export const DELETE = withErrorHandling(async (request: Request) => {
     return createProblemResponse(400, "ID mancante", "L'ID del sensore è obbligatorio.");
   }
 
-  const existed = await sensorsStore.delete(id);
-  if (!existed) {
+  const existing = await sensorDeviceQueries.findById(id);
+  if (!existing) {
     return createProblemResponse(404, "Sensore non trovato", "Il sensore specificato non esiste.");
   }
+
+  await sensorDeviceQueries.delete(id);
 
   return createSuccessResponse({ deleted: true, id }, { meta: { domain: "iot" } });
 });
