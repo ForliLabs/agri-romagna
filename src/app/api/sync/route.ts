@@ -1,5 +1,5 @@
 import { authorizeRoute, createSuccessResponse } from "@/lib/api-response";
-import { createProblemResponse, withErrorHandling } from "@/lib/api-errors";
+import { withErrorHandling } from "@/lib/api-errors";
 import { config } from "@/lib/config";
 
 /** Whitelist of API path prefixes allowed in sync mutations (prevents SSRF). */
@@ -57,7 +57,19 @@ export const POST = withErrorHandling(async (request: Request) => {
     }
 
     try {
+      const requestOrigin = new URL(request.url).origin;
       const internalUrl = new URL(mutation.url, request.url);
+
+      // Enforce same-origin to prevent SSRF
+      if (internalUrl.origin !== requestOrigin) {
+        results.push({
+          url: mutation.url,
+          success: false,
+          error: "URL non consentito per la sincronizzazione",
+        });
+        continue;
+      }
+
       const response = await fetch(internalUrl.toString(), {
         method: mutation.method,
         headers: {
