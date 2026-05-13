@@ -7,29 +7,12 @@ import {
   getFieldDossiers,
   getKnowledgeGraph,
   getSeasonalDigests,
-  type KnowledgeRelationType,
 } from "@/lib/knowledge-graph-data";
 
-const { entities, relations, queries } = getKnowledgeGraph();
+const { queries } = getKnowledgeGraph();
 const fieldDossiers = getFieldDossiers();
 const seasonalDigests = getSeasonalDigests();
 const currentDigest = seasonalDigests[0];
-
-const relationTypeLabels: Record<KnowledgeRelationType, string> = {
-  applied_to: "Applicata a",
-  resulted_in: "Ha prodotto",
-  under_conditions: "Valida in condizioni",
-  correlated_with: "Correlata con",
-  contradicts: "In contrasto con",
-};
-
-const relationTypeClasses: Record<KnowledgeRelationType, string> = {
-  applied_to: "bg-emerald-100 text-emerald-800",
-  resulted_in: "bg-sky-100 text-sky-800",
-  under_conditions: "bg-amber-100 text-amber-800",
-  correlated_with: "bg-violet-100 text-violet-800",
-  contradicts: "bg-rose-100 text-rose-800",
-};
 
 const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",

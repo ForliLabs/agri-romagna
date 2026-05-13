@@ -42,7 +42,6 @@ import {
   Trees,
   Users,
   UsersRound,
-  Wallet,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard";
 

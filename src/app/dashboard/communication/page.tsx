@@ -1,9 +1,7 @@
 import {
   MessageSquare,
   Hash,
-  Bell,
   FileText,
-  Users,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import {

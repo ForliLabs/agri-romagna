@@ -55,14 +55,6 @@ const relationTypeClasses: Record<KnowledgeRelationType, string> = {
   contradicts: "bg-rose-100 text-rose-800",
 };
 
-const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }

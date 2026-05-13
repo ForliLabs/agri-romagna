@@ -1,9 +1,6 @@
 import {
   Newspaper,
   Calendar,
-  Bell,
-  AlertTriangle,
-  Filter,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import {

@@ -1,29 +1,19 @@
 import {
   FlaskConical,
-  BarChart3,
-  GitCompare,
   Lightbulb,
   Dices,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import {
   getScenarios,
-  getCompletedScenarios,
   getSimulatorStats,
   scenarioStatusClasses,
   changeVariableLabels,
-  type SimulationResults,
   type DistributionResult,
 } from "@/lib/field-simulator-data";
 
 const stats = getSimulatorStats();
 const scenarios = getScenarios();
-const completed = getCompletedScenarios();
-
-function formatDistribution(d: DistributionResult): string {
-  return `${d.p50.toLocaleString("it-IT")} ${d.unit}`;
-}
-
 function changeColor(change: number, inverse: boolean = false): string {
   const positive = inverse ? change < 0 : change > 0;
   return positive ? "text-emerald-700" : change === 0 ? "text-emerald-950/55" : "text-rose-700";

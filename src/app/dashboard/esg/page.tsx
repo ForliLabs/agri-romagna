@@ -13,8 +13,6 @@ import {
   getESGScorecard,
   getStakeholderViews,
   getESGStats,
-  categoryLabels,
-  categoryClasses,
   trendLabels,
   trendClasses,
 } from "@/lib/esg-data";

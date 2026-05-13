@@ -96,13 +96,6 @@ const roleBadgeClasses: Record<RBACRole, string> = {
   buyer: "bg-fuchsia-100 text-fuchsia-800",
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("it-IT", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 const auditWindowStart = new Date("2026-07-21T08:30:00+02:00").getTime();
 const recentAuditCount = auditEntries.filter(
   (entry) => new Date(entry.timestamp).getTime() >= auditWindowStart

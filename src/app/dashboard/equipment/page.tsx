@@ -1,6 +1,5 @@
 import {
   Wrench,
-  Calendar,
   Cog,
   Share2,
   TrendingUp,

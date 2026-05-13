@@ -1,15 +1,12 @@
 import {
   Crosshair,
   MapPin,
-  FileCheck,
   TrendingDown,
-  Droplets,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import {
   getManagementZones,
   getPrescriptions,
-  getApplicationLogs,
   getSeasonalSavings,
   getSprayOptimizerStats,
   stressClasses,
@@ -20,7 +17,6 @@ const stats = getSprayOptimizerStats();
 const prescriptions = getPrescriptions();
 const zones = getManagementZones();
 const savings = getSeasonalSavings();
-const logs = getApplicationLogs();
 
 export default function SprayOptimizerPage() {
   return (
