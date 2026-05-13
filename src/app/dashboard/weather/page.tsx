@@ -11,6 +11,12 @@ import {
 import { StatCard } from "@/components/dashboard";
 import { weatherData } from "@/lib/data";
 import { weatherWorkflowWindows } from "@/lib/operations-insights";
+import {
+  fetchCurrentWeather,
+  fetchForecast,
+  fetchRiverLevels,
+  generateWeatherAlerts,
+} from "@/lib/weather-service";
 import { WeatherCharts } from "./charts";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -43,10 +49,20 @@ const workflowLinkMap: Record<string, string> = {
 };
 
 const maxRain = Math.max(...weatherData.historicalRainfall.map((point) => point.mm));
-const workflowBlocks = weatherWorkflowWindows.filter((window) => window.status === "bloccato").length;
-const workflowWarnings = weatherWorkflowWindows.filter((window) => window.status === "monitorare").length;
 
-export default function WeatherPage() {
+export default async function WeatherPage() {
+  // Fetch live data in parallel (forecast & rivers first, then derive alerts)
+  const [currentWeather, forecast, rivers] = await Promise.all([
+    fetchCurrentWeather(),
+    fetchForecast(),
+    fetchRiverLevels(),
+  ]);
+  const alerts = await generateWeatherAlerts({ forecast, rivers });
+
+  const activeAlerts = alerts.filter((a) => a.severity !== "bassa");
+  const workflowBlocks = weatherWorkflowWindows.filter((window) => window.status === "bloccato").length;
+  const workflowWarnings = weatherWorkflowWindows.filter((window) => window.status === "monitorare").length;
+
   return (
     <div className="space-y-8">
       <section>
@@ -57,16 +73,16 @@ export default function WeatherPage() {
           Scenario climatico e idrico sulla Romagna forlivese.
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-950/70 sm:text-base">
-          Previsioni a 7 giorni, fiumi monitorati e pannello di rischio per proteggere raccolto, accessi e logistica.
-          In iterazione 2 il meteo diventa anche una cabina di regia per i workflow.
+          Previsioni a 7 giorni con dati OpenMeteo in tempo reale, fiumi monitorati e pannello di rischio
+          per proteggere raccolto, accessi e logistica.
         </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Osservazione più recente"
-          value={timeFormatter.format(new Date(weatherData.current.observedAt))}
-          change={`${weatherData.current.condition} · ${weatherData.current.temperatureC}°C`}
+          value={timeFormatter.format(new Date(currentWeather.observedAt))}
+          change={`${currentWeather.condition} · ${currentWeather.temperatureC}°C`}
           trend="up"
         />
         <StatCard
@@ -83,9 +99,9 @@ export default function WeatherPage() {
         />
         <StatCard
           label="Allerte attive"
-          value={String(weatherData.alerts.filter((alert) => alert.severity !== "bassa").length)}
-          change="Piena e grandine da presidiare"
-          trend="neutral"
+          value={String(activeAlerts.length)}
+          change={activeAlerts.length > 0 ? activeAlerts.map((a) => a.type).join(", ") : "Nessuna allerta"}
+          trend={activeAlerts.length > 0 ? "down" : "up"}
         />
       </section>
 
@@ -94,8 +110,8 @@ export default function WeatherPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Stato corrente</p>
-              <h2 className="mt-2 text-2xl font-bold text-emerald-950">Forlì · condizioni correnti</h2>
-              <p className="mt-2 text-sm text-emerald-950/65">Ultima lettura alle {timeFormatter.format(new Date(weatherData.current.observedAt))}</p>
+              <h2 className="mt-2 text-2xl font-bold text-emerald-950">{currentWeather.location} · condizioni correnti</h2>
+              <p className="mt-2 text-sm text-emerald-950/65">Ultima lettura alle {timeFormatter.format(new Date(currentWeather.observedAt))}</p>
             </div>
             <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
               <CloudSun className="h-6 w-6" />
@@ -103,23 +119,25 @@ export default function WeatherPage() {
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
             <div className="rounded-2xl bg-emerald-950 p-5 text-white">
-              <p className="text-sm text-emerald-50/75">{weatherData.current.condition}</p>
-              <p className="mt-4 text-5xl font-black tracking-tight">{weatherData.current.temperatureC}°</p>
-              <p className="mt-2 text-sm text-emerald-50/75">Umidità {weatherData.current.humidity}% · Vento {weatherData.current.windKmh} km/h</p>
+              <p className="text-sm text-emerald-50/75">{currentWeather.condition}</p>
+              <p className="mt-4 text-5xl font-black tracking-tight">{currentWeather.temperatureC}°</p>
+              <p className="mt-2 text-sm text-emerald-50/75">Umidità {currentWeather.humidity}% · Vento {currentWeather.windKmh} km/h</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <p className="text-sm text-emerald-950/60">Prob. pioggia</p>
-                <p className="mt-2 text-2xl font-bold text-emerald-950">{weatherData.current.precipitationChance}%</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-950">{currentWeather.precipitationChance}%</p>
               </div>
               <div className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <p className="text-sm text-emerald-950/60">Pressione</p>
-                <p className="mt-2 text-2xl font-bold text-emerald-950">{weatherData.current.pressureHpa} hPa</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-950">{currentWeather.pressureHpa} hPa</p>
               </div>
               <div className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4 sm:col-span-2">
                 <p className="text-sm text-emerald-950/60">Focus operativo</p>
                 <p className="mt-2 text-sm leading-6 text-emerald-950/75">
-                  La cabina meteo segnala una settimana utile per coordinare trattamenti, raccolta e giri cooperativi senza duplicare i controlli su altri moduli.
+                  {forecast.length > 0 && forecast[0].note
+                    ? forecast[0].note
+                    : "Condizioni variabili: consultare aggiornamento prima di uscire in campo."}
                 </p>
               </div>
             </div>
@@ -160,13 +178,19 @@ export default function WeatherPage() {
                   </div>
                   <div className="text-sm text-emerald-950/70 sm:text-right">
                     <p className="font-semibold text-emerald-950">{window.recommendedDay}</p>
-                    <Link
-                      href={workflowLinkMap[window.workflow]}
-                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-600"
-                    >
-                      Apri modulo collegato
-                      <Route className="h-4 w-4" />
-                    </Link>
+                    {workflowLinkMap[window.workflow] ? (
+                      <Link
+                        href={workflowLinkMap[window.workflow]}
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-600"
+                      >
+                        Apri modulo collegato
+                        <Route className="h-4 w-4" />
+                      </Link>
+                    ) : (
+                      <span className="mt-3 inline-flex items-center gap-2 text-sm text-emerald-950/40">
+                        Modulo non disponibile
+                      </span>
+                    )}
                   </div>
                 </div>
               </article>
@@ -183,11 +207,11 @@ export default function WeatherPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Previsioni 7 giorni</h2>
-              <p className="text-sm text-emerald-950/65">Forlì e cintura agricola</p>
+              <p className="text-sm text-emerald-950/65">Forlì e cintura agricola · dati OpenMeteo</p>
             </div>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {weatherData.forecast.map((day) => (
+            {(forecast.length > 0 ? forecast : weatherData.forecast).map((day) => (
               <article key={day.date} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -216,11 +240,11 @@ export default function WeatherPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Livelli fiumi</h2>
-              <p className="text-sm text-emerald-950/65">Montone e Rabbi</p>
+              <p className="text-sm text-emerald-950/65">Montone e Rabbi · aggiornamento live</p>
             </div>
           </div>
           <div className="mt-6 space-y-4">
-            {weatherData.rivers.map((river) => (
+            {rivers.map((river) => (
               <div key={river.name} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <div className="flex items-center justify-between gap-4">
                   <h3 className="font-semibold text-emerald-950">{river.name}</h3>
@@ -232,6 +256,20 @@ export default function WeatherPage() {
                 <p className="mt-2 text-sm text-emerald-950/70">
                   Soglia attenzione {river.thresholdMeters.toFixed(2)} m · Trend {river.trend}
                 </p>
+                {/* Visual level gauge */}
+                <div className="mt-3 h-2 rounded-full bg-emerald-100">
+                  <div
+                    role="progressbar"
+                    aria-valuenow={Math.round(Math.min((river.levelMeters / river.thresholdMeters) * 100, 100))}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${river.name}: ${river.levelMeters.toFixed(2)} m di ${river.thresholdMeters.toFixed(2)} m soglia`}
+                    className={`h-full rounded-full ${
+                      river.status === "normale" ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                    style={{ width: `${Math.min((river.levelMeters / river.thresholdMeters) * 100, 100)}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -246,16 +284,16 @@ export default function WeatherPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Pannello rischi</h2>
-              <p className="text-sm text-emerald-950/65">Gelo, grandine e piena</p>
+              <p className="text-sm text-emerald-950/65">Gelo, grandine e piena · generato da dati live</p>
             </div>
           </div>
           <div className="mt-6 space-y-4">
-            {weatherData.alerts.map((alert) => (
+            {alerts.map((alert) => (
               <article key={alert.id} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="font-semibold text-emerald-950">{alert.title}</h3>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${severityClasses[alert.severity]}`}>
-                    {alert.severity}
+                    <span className="sr-only">Severità: </span>{alert.severity}
                   </span>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-emerald-950/75">{alert.detail}</p>
@@ -312,7 +350,12 @@ export default function WeatherPage() {
 
       <WeatherCharts
         rainfall={weatherData.historicalRainfall}
-        forecast={weatherData.forecast}
+        forecast={(forecast.length > 0 ? forecast : weatherData.forecast).map((f) => ({
+          day: f.day,
+          maxC: f.maxC,
+          minC: f.minC,
+          rainProbability: f.rainProbability,
+        }))}
       />
     </div>
   );

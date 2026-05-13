@@ -105,6 +105,7 @@ export async function fetchCurrentWeather(): Promise<WeatherCurrent> {
   try {
     const url = `${OPENMETEO_BASE}/forecast?latitude=${FORLI_LAT}&longitude=${FORLI_LON}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability,surface_pressure,weather_code&timezone=Europe%2FRome`;
     const res = await fetch(url, { next: { revalidate: 900 } }); // 15-min cache
+    if (!res.ok) throw new Error(`OpenMeteo current weather HTTP ${res.status}`);
     const json = (await res.json()) as OpenMeteoCurrentResponse;
     const c = json.current;
 
@@ -144,6 +145,7 @@ export async function fetchForecast(): Promise<ForecastDay[]> {
   try {
     const url = `${OPENMETEO_BASE}/forecast?latitude=${FORLI_LAT}&longitude=${FORLI_LON}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=Europe%2FRome&forecast_days=7`;
     const res = await fetch(url, { next: { revalidate: 3600 } }); // 1-hour cache
+    if (!res.ok) throw new Error(`OpenMeteo forecast HTTP ${res.status}`);
     const json = (await res.json()) as OpenMeteoForecastResponse;
     const d = json.daily;
 
@@ -208,51 +210,58 @@ export async function fetchRiverLevels(): Promise<RiverLevel[]> {
   return result;
 }
 
-// Alert engine: generates alerts based on weather + river data
-export async function generateWeatherAlerts(): Promise<RiskAlert[]> {
+// Alert engine: generates alerts based on weather + river data.
+// Accepts optional pre-fetched data to avoid duplicate API calls.
+export async function generateWeatherAlerts(options?: {
+  forecast?: ForecastDay[];
+  rivers?: RiverLevel[];
+}): Promise<RiskAlert[]> {
   const cacheKey = "weather-alerts";
   const cached = getCached<RiskAlert[]>(cacheKey);
   if (cached) return cached;
 
-  const forecast = await fetchForecast();
-  const rivers = await fetchRiverLevels();
+  const forecast = options?.forecast ?? await fetchForecast();
+  const rivers = options?.rivers ?? await fetchRiverLevels();
   const alerts: RiskAlert[] = [];
 
-  // Frost alert
-  const frostDays = forecast.filter((d) => d.minC <= 2);
-  if (frostDays.length > 0) {
-    alerts.push({
-      id: "alert-gelo-auto",
-      type: "gelo",
-      severity: frostDays.some((d) => d.minC <= 0) ? "alta" : "media",
-      title: `Rischio gelo su ${frostDays.length} giorn${frostDays.length === 1 ? "o" : "i"}`,
-      detail: `Temperature minime fino a ${Math.min(...frostDays.map((d) => d.minC))}°C. Proteggere vigneti e frutteti sensibili.`,
-      timeWindow: frostDays.map((d) => d.day).join(", "),
-    });
-  } else {
-    alerts.push({
-      id: "alert-gelo-ok",
-      type: "gelo",
-      severity: "bassa",
-      title: "Rischio gelo assente nel breve periodo",
-      detail: `Temperature minime sempre superiori a ${Math.min(...forecast.map((d) => d.minC))}°C nella prossima settimana.`,
-      timeWindow: "Orizzonte 7 giorni",
-    });
-  }
+  // Guard: skip forecast-derived alerts when forecast is empty
+  if (forecast.length > 0) {
+    // Frost alert
+    const frostDays = forecast.filter((d) => d.minC <= 2);
+    if (frostDays.length > 0) {
+      alerts.push({
+        id: "alert-gelo-auto",
+        type: "gelo",
+        severity: frostDays.some((d) => d.minC <= 0) ? "alta" : "media",
+        title: `Rischio gelo su ${frostDays.length} giorn${frostDays.length === 1 ? "o" : "i"}`,
+        detail: `Temperature minime fino a ${Math.min(...frostDays.map((d) => d.minC))}°C. Proteggere vigneti e frutteti sensibili.`,
+        timeWindow: frostDays.map((d) => d.day).join(", "),
+      });
+    } else {
+      alerts.push({
+        id: "alert-gelo-ok",
+        type: "gelo",
+        severity: "bassa",
+        title: "Rischio gelo assente nel breve periodo",
+        detail: `Temperature minime sempre superiori a ${Math.min(...forecast.map((d) => d.minC))}°C nella prossima settimana.`,
+        timeWindow: "Orizzonte 7 giorni",
+      });
+    }
 
-  // Hail alert
-  const hailDays = forecast.filter((d) =>
-    d.condition.toLowerCase().includes("grandine") || d.condition.toLowerCase().includes("temporale")
-  );
-  if (hailDays.length > 0) {
-    alerts.push({
-      id: "alert-grandine-auto",
-      type: "grandine",
-      severity: hailDays.length > 2 ? "alta" : "media",
-      title: "Possibile grandine in finestra temporalesca",
-      detail: `Temporali previsti ${hailDays.map((d) => d.day).join(", ")} con rischio grandine sulle colline tra Bertinoro e Meldola.`,
-      timeWindow: hailDays.map((d) => `${d.day} · pomeriggio`).join(", "),
-    });
+    // Hail alert
+    const hailDays = forecast.filter((d) =>
+      d.condition.toLowerCase().includes("grandine") || d.condition.toLowerCase().includes("temporale")
+    );
+    if (hailDays.length > 0) {
+      alerts.push({
+        id: "alert-grandine-auto",
+        type: "grandine",
+        severity: hailDays.length > 2 ? "alta" : "media",
+        title: "Possibile grandine in finestra temporalesca",
+        detail: `Temporali previsti ${hailDays.map((d) => d.day).join(", ")} con rischio grandine sulle colline tra Bertinoro e Meldola.`,
+        timeWindow: hailDays.map((d) => `${d.day} · pomeriggio`).join(", "),
+      });
+    }
   }
 
   // Flood alert from river levels

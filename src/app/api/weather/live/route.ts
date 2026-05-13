@@ -9,12 +9,12 @@ import { withAuth } from "@/lib/api-response";
 
 export const GET = withAuth("weather:read", async () => {
   try {
-    const [current, forecast, rivers, alerts] = await Promise.all([
+    const [current, forecast, rivers] = await Promise.all([
       fetchCurrentWeather(),
       fetchForecast(),
       fetchRiverLevels(),
-      generateWeatherAlerts(),
     ]);
+    const alerts = await generateWeatherAlerts({ forecast, rivers });
 
     const notifications = generateNotifications(alerts);
 
