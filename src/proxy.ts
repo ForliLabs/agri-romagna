@@ -9,9 +9,11 @@ const PUBLIC_PATHS = [
   "/offline",
   "/api/auth",
   "/api/health",
+  "/api/sync",
   "/api/onboarding",
-  "/traceability",
 ];
+
+const STATIC_EXTENSIONS = [".svg", ".png", ".jpg", ".ico", ".css", ".js", ".woff", ".woff2"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -25,15 +27,26 @@ function isStaticAsset(pathname: string): boolean {
     pathname.startsWith("/icons") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.json" ||
-    pathname === "/sw.js"
+    pathname === "/sw.js" ||
+    STATIC_EXTENSIONS.some((ext) => pathname.endsWith(ext))
   );
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow static assets and public paths
-  if (isStaticAsset(pathname) || isPublicPath(pathname)) {
+  // Allow static assets
+  if (isStaticAsset(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Allow public paths
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Allow traceability public pages (consumer-facing QR pages)
+  if (pathname.startsWith("/traceability/") || pathname === "/traceability") {
     return NextResponse.next();
   }
 
@@ -43,28 +56,30 @@ export function proxy(request: NextRequest) {
     authHeader?.replace("Bearer ", "") ||
     request.cookies.get("access_token")?.value;
 
-  // For API routes, return 401 JSON if no token
-  if (pathname.startsWith("/api/") && !token) {
-    return NextResponse.json(
-      { error: "Autenticazione richiesta.", code: "UNAUTHORIZED" },
-      { status: 401 }
-    );
-  }
+  if (!token) {
+    // API routes return 401 JSON
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Autenticazione richiesta.", code: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
 
-  // For dashboard pages, redirect to login if no token
-  if (pathname.startsWith("/dashboard") && !token) {
+    // All other protected routes redirect to login
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Token exists - allow request (JWT validation happens in route handlers)
-  return NextResponse.next();
+  // Token exists — add auth header for downstream handlers
+  const response = NextResponse.next();
+  response.headers.set("x-has-auth", "true");
+  return response;
 }
 
 export const config = {
   matcher: [
-    // Match all paths except static files
+    // Match all paths except Next.js internals and static files
     "/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)",
   ],
 };
