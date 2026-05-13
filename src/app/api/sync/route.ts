@@ -5,6 +5,9 @@ import { config } from "@/lib/config";
 /** Whitelist of API path prefixes allowed in sync mutations (prevents SSRF). */
 const ALLOWED_SYNC_PATHS = config.SYNC_ALLOWED_PATHS_LIST;
 
+/** Only these HTTP methods may be forwarded by the sync endpoint. */
+const ALLOWED_SYNC_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 function isAllowedSyncUrl(url: string): boolean {
   try {
     const parsed = new URL(url, "http://localhost");
@@ -56,6 +59,16 @@ export const POST = withErrorHandling(async (request: Request) => {
       continue;
     }
 
+    const method = mutation.method.toUpperCase();
+    if (!ALLOWED_SYNC_METHODS.has(method)) {
+      results.push({
+        url: mutation.url,
+        success: false,
+        error: `Metodo HTTP '${method}' non consentito per la sincronizzazione`,
+      });
+      continue;
+    }
+
     try {
       const requestOrigin = new URL(request.url).origin;
       const internalUrl = new URL(mutation.url, request.url);
@@ -71,7 +84,7 @@ export const POST = withErrorHandling(async (request: Request) => {
       }
 
       const response = await fetch(internalUrl.toString(), {
-        method: mutation.method,
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: request.headers.get("Authorization") ?? "",

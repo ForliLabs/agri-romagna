@@ -159,3 +159,60 @@ describe("API /api/fields", () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe("API /api/sync", () => {
+  it("POST rejects GET method in mutations", async () => {
+    const { POST } = await import("@/app/api/sync/route");
+    const request = authedRequest("http://localhost:3000/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mutations: [
+          { url: "/api/fields", method: "GET", body: "{}", timestamp: Date.now() },
+        ],
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.failed).toBe(1);
+    expect(body.data.results[0].error).toContain("GET");
+  });
+
+  it("POST rejects disallowed URLs", async () => {
+    const { POST } = await import("@/app/api/sync/route");
+    const request = authedRequest("http://localhost:3000/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mutations: [
+          { url: "/api/admin/users", method: "POST", body: "{}", timestamp: Date.now() },
+        ],
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.failed).toBe(1);
+    expect(body.data.results[0].error).toContain("URL non consentito");
+  });
+
+  it("POST accepts allowed methods on allowed paths", async () => {
+    // The inner fetch will fail (no server running), but it should pass URL+method validation
+    const { POST } = await import("@/app/api/sync/route");
+    const request = authedRequest("http://localhost:3000/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mutations: [
+          { url: "/api/fields", method: "POST", body: JSON.stringify({ name: "test" }), timestamp: Date.now() },
+        ],
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    // The mutation should pass validation (method + URL) even if the inner fetch fails
+    expect(body.data.processed).toBe(1);
+  });
+});
