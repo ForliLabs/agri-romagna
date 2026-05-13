@@ -71,9 +71,13 @@ export function SyncStatusIndicator() {
   }, []);
 
   useEffect(() => {
-    checkStatus();
+    const initialCheck = window.setTimeout(() => {
+      void checkStatus();
+    }, 0);
 
-    const handleOnline = () => checkStatus();
+    const handleOnline = () => {
+      void checkStatus();
+    };
     const handleOffline = () =>
       setState((prev) => ({ ...prev, status: "offline" }));
 
@@ -81,9 +85,12 @@ export function SyncStatusIndicator() {
     window.addEventListener("offline", handleOffline);
 
     // Periodic check every 30 seconds
-    const interval = setInterval(checkStatus, 30_000);
+    const interval = window.setInterval(() => {
+      void checkStatus();
+    }, 30_000);
 
     return () => {
+      clearTimeout(initialCheck);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       clearInterval(interval);

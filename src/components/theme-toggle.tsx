@@ -20,10 +20,12 @@ export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const stored = localStorage.getItem("agri-theme") as Theme | null;
     const initial = stored ?? "system";
-    setTheme(initial);
+    const frame = requestAnimationFrame(() => {
+      setMounted(true);
+      setTheme(initial);
+    });
     applyTheme(initial);
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -34,7 +36,10 @@ export function ThemeToggle() {
       }
     };
     mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    return () => {
+      cancelAnimationFrame(frame);
+      mediaQuery.removeEventListener("change", handleChange);
+    };
   }, []);
 
   function toggleTheme() {

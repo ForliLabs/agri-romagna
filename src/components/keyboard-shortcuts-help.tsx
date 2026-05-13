@@ -7,7 +7,6 @@ import {
   formatShortcutKeys,
   type ShortcutRegistration,
 } from "@/lib/keyboard-shortcuts";
-import { cn } from "@/lib/utils";
 import { trapFocus, focusFirstElement } from "@/lib/focus-management";
 
 /**

@@ -46,6 +46,53 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase();
 }
 
+const INITIAL_NOTIFICATIONS: NotificationLog[] = [
+  {
+    id: "notif-1",
+    userId: "user-tondini",
+    category: "frost",
+    channel: "push",
+    title: "Rischio gelo domani mattina",
+    message: "Temperature previste fino a -1°C su Bertinoro.",
+    sentAt: "2026-07-21T06:00:00.000Z",
+    read: false,
+    actionUrl: "/dashboard/weather",
+  },
+  {
+    id: "notif-2",
+    userId: "user-tondini",
+    category: "flood",
+    channel: "in_app",
+    title: "Montone: livello in aumento",
+    message: "Livello attuale 2.18m — soglia attenzione a 2.40m.",
+    sentAt: "2026-07-21T03:00:00.000Z",
+    read: false,
+    actionUrl: "/dashboard/weather",
+  },
+  {
+    id: "notif-3",
+    userId: "user-tondini",
+    category: "compliance",
+    channel: "email",
+    title: "Scadenza PAC tra 15 giorni",
+    message: "Dichiarazione PAC 2026 per Seminativo via Zampeschi.",
+    sentAt: "2026-07-20T08:00:00.000Z",
+    read: true,
+    actionUrl: "/dashboard/compliance",
+  },
+  {
+    id: "notif-4",
+    userId: "user-tondini",
+    category: "pest",
+    channel: "in_app",
+    title: "Allerta peronospora vigna sud",
+    message: "Umidità >85% e T >18°C per 3 giorni consecutivi.",
+    sentAt: "2026-07-21T00:00:00.000Z",
+    read: false,
+    actionUrl: "/dashboard/pest-warning",
+  },
+];
+
 export function DashboardShell({ brand, items, children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -55,52 +102,9 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
   const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   // Notification state (demo data)
-  const [notifications, setNotifications] = useState<NotificationLog[]>([
-    {
-      id: "notif-1",
-      userId: "user-tondini",
-      category: "frost",
-      channel: "push",
-      title: "Rischio gelo domani mattina",
-      message: "Temperature previste fino a -1°C su Bertinoro.",
-      sentAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-      read: false,
-      actionUrl: "/dashboard/weather",
-    },
-    {
-      id: "notif-2",
-      userId: "user-tondini",
-      category: "flood",
-      channel: "in_app",
-      title: "Montone: livello in aumento",
-      message: "Livello attuale 2.18m — soglia attenzione a 2.40m.",
-      sentAt: new Date(Date.now() - 5 * 3600_000).toISOString(),
-      read: false,
-      actionUrl: "/dashboard/weather",
-    },
-    {
-      id: "notif-3",
-      userId: "user-tondini",
-      category: "compliance",
-      channel: "email",
-      title: "Scadenza PAC tra 15 giorni",
-      message: "Dichiarazione PAC 2026 per Seminativo via Zampeschi.",
-      sentAt: new Date(Date.now() - 24 * 3600_000).toISOString(),
-      read: true,
-      actionUrl: "/dashboard/compliance",
-    },
-    {
-      id: "notif-4",
-      userId: "user-tondini",
-      category: "pest",
-      channel: "in_app",
-      title: "Allerta peronospora vigna sud",
-      message: "Umidità >85% e T >18°C per 3 giorni consecutivi.",
-      sentAt: new Date(Date.now() - 8 * 3600_000).toISOString(),
-      read: false,
-      actionUrl: "/dashboard/pest-warning",
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationLog[]>(() =>
+    INITIAL_NOTIFICATIONS.map((notification) => ({ ...notification }))
+  );
 
   const handleMarkAsRead = useCallback((id: string) => {
     setNotifications((prev) =>

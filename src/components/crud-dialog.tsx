@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { Plus, X, Edit3, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trapFocus, focusFirstElement } from "@/lib/focus-management";
 
 interface FormField {

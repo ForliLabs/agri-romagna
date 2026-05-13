@@ -11,11 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Search, ArrowRight, CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trapFocus } from "@/lib/focus-management";
-import {
-  useKeyboardShortcut,
-} from "@/components/keyboard-shortcuts-help";
-import { formatShortcutKeys } from "@/lib/keyboard-shortcuts";
+import { useKeyboardShortcut } from "@/components/keyboard-shortcuts-help";
 
 export interface CommandPaletteItem {
   id: string;
@@ -138,10 +134,6 @@ export function CommandPalette({ items }: CommandPaletteProps) {
   }, [grouped]);
 
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
-
-  useEffect(() => {
     if (open) {
       // Small delay for DOM to render before focusing
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -203,6 +195,7 @@ export function CommandPalette({ items }: CommandPaletteProps) {
       <div
         ref={dialogRef}
         role="combobox"
+        aria-controls="command-palette-list"
         aria-expanded="true"
         aria-haspopup="listbox"
         aria-label="Palette comandi — cerca tra i moduli"
@@ -220,7 +213,10 @@ export function CommandPalette({ items }: CommandPaletteProps) {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             placeholder="Cerca moduli, flussi, analytics…"
             className="min-w-0 flex-1 bg-transparent text-sm text-emerald-950 outline-none placeholder:text-emerald-950/40"
             aria-label="Cerca moduli"
