@@ -11,6 +11,7 @@ import {
 import { StatCard } from "@/components/dashboard";
 import { weatherData } from "@/lib/data";
 import { deriveWeatherWorkflowWindows } from "@/lib/operations-insights";
+import { getConfirmedActions } from "@/lib/confirmed-actions";
 import {
   fetchCurrentWeather,
   fetchForecast,
@@ -59,6 +60,10 @@ export default async function WeatherPage() {
     fetchRiverLevels(),
   ]);
   const alerts = await generateWeatherAlerts({ forecast, rivers });
+  const confirmedActions = await getConfirmedActions();
+  const confirmedActionKeys = new Set(
+    confirmedActions.map((action) => `${action.workflow}::${action.recommendedDay}`)
+  );
 
   // Derive workflow windows from live data
   const weatherWorkflowWindows = deriveWeatherWorkflowWindows(
@@ -215,6 +220,11 @@ export default async function WeatherPage() {
                         workflow={window.workflow}
                         recommendedDay={window.recommendedDay}
                         recommendation={window.recommendation}
+                        initialConfirmed={confirmedActionKeys.has(
+                          `${window.workflow}::${window.recommendedDay}`
+                        )}
+                        confirmedBy="cabina meteo"
+                        note="Conferma rapida dalla cabina meteo"
                       />
                     </div>
                   </div>

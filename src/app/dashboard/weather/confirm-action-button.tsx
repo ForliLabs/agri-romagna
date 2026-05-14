@@ -7,14 +7,22 @@ interface ConfirmActionButtonProps {
   workflow: string;
   recommendedDay: string;
   recommendation: string;
+  initialConfirmed?: boolean;
+  confirmedBy?: string;
+  note?: string;
 }
 
 export function ConfirmActionButton({
   workflow,
   recommendedDay,
   recommendation,
+  initialConfirmed = false,
+  confirmedBy,
+  note,
 }: ConfirmActionButtonProps) {
-  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "done" | "error">(
+    initialConfirmed ? "done" : "idle"
+  );
 
   async function handleConfirm() {
     setState("loading");
@@ -23,7 +31,13 @@ export function ConfirmActionButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ workflow, recommendedDay, recommendation }),
+        body: JSON.stringify({
+          workflow,
+          recommendedDay,
+          recommendation,
+          confirmedBy,
+          note,
+        }),
       });
       if (res.ok) {
         setState("done");
