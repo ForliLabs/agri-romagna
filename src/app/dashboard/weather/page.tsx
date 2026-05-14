@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import { weatherData } from "@/lib/data";
-import { weatherWorkflowWindows } from "@/lib/operations-insights";
+import { deriveWeatherWorkflowWindows } from "@/lib/operations-insights";
 import {
   fetchCurrentWeather,
   fetchForecast,
@@ -18,6 +18,7 @@ import {
   generateWeatherAlerts,
 } from "@/lib/weather-service";
 import { WeatherCharts } from "./charts";
+import { ConfirmActionButton } from "./confirm-action-button";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -58,6 +59,12 @@ export default async function WeatherPage() {
     fetchRiverLevels(),
   ]);
   const alerts = await generateWeatherAlerts({ forecast, rivers });
+
+  // Derive workflow windows from live data
+  const weatherWorkflowWindows = deriveWeatherWorkflowWindows(
+    forecast.length > 0 ? forecast : weatherData.forecast,
+    rivers,
+  );
 
   const activeAlerts = alerts.filter((a) => a.severity !== "bassa");
   const workflowBlocks = weatherWorkflowWindows.filter((window) => window.status === "bloccato").length;
@@ -179,7 +186,7 @@ export default async function WeatherPage() {
                             ? "bg-emerald-50 text-emerald-800"
                             : window.status === "monitorare"
                               ? "bg-amber-100 text-amber-800"
-                              : "bg-rose-100 text-rose-700"
+                              : "bg-rose-100 text-rose-800"
                         }`}
                       >
                         {window.status}
@@ -203,6 +210,13 @@ export default async function WeatherPage() {
                         Modulo non disponibile
                       </span>
                     )}
+                    <div>
+                      <ConfirmActionButton
+                        workflow={window.workflow}
+                        recommendedDay={window.recommendedDay}
+                        recommendation={window.recommendation}
+                      />
+                    </div>
                   </div>
                 </div>
               </article>
