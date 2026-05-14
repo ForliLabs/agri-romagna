@@ -10,6 +10,7 @@ import {
   Banknote,
   CalendarClock,
   Droplets,
+  CheckCircle2,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import { fields, harvestSchedule, recentActivity, weatherData } from "@/lib/data";
@@ -18,6 +19,7 @@ import { getComplianceSummary, getUpcomingDeadlines, complianceRecords } from "@
 import { getYieldPredictionSummary } from "@/lib/yield-prediction";
 import { getCooperativeCarbonSummary, getCarbonByCategory, getCarbonComplianceReadiness } from "@/lib/carbon-data";
 import { fetchCurrentWeather, fetchForecast, fetchRiverLevels, generateWeatherAlerts } from "@/lib/weather-service";
+import { getConfirmedActions } from "@/lib/confirmed-actions";
 import { DashboardCharts } from "./dashboard-charts";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -53,6 +55,7 @@ export default async function DashboardPage() {
   const carbonSummary = getCooperativeCarbonSummary();
   const carbonCategories = getCarbonByCategory();
   const carbonReadiness = getCarbonComplianceReadiness();
+  const confirmedActions = await getConfirmedActions();
 
   const activeAlerts = alerts.filter((a) => a.severity !== "bassa");
   const forecastForDisplay = forecast.length > 0 ? forecast : weatherData.forecast;
@@ -529,6 +532,75 @@ export default async function DashboardPage() {
               </article>
             ))}
           </div>
+        </article>
+      </section>
+
+      {/* Confirmed workflow actions */}
+      <section>
+        <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
+              <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Azioni confermate
+              </p>
+              <h2 className="text-2xl font-bold text-emerald-950">Workflow operativi attivi</h2>
+            </div>
+          </div>
+          {confirmedActions.length > 0 ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {confirmedActions.map((action) => (
+                <div
+                  key={action.id}
+                  className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-emerald-950">{action.workflow}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        action.status === "pianificata"
+                          ? "bg-sky-100 text-sky-800"
+                          : action.status === "completata"
+                            ? "bg-emerald-50 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {action.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-emerald-950/70">
+                    {action.recommendation}
+                  </p>
+                  <div className="mt-3 flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-emerald-950/50">
+                    <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+                    {action.recommendedDay} · confermata da {action.confirmedBy}
+                  </div>
+                  {action.note && (
+                    <p className="mt-2 text-xs italic text-emerald-950/55">{action.note}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-dashed border-emerald-950/15 bg-[#f7f4ec] p-6 text-center">
+              <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-950/25" aria-hidden="true" />
+              <p className="mt-2 text-sm font-semibold text-emerald-950/60">
+                Nessuna azione confermata
+              </p>
+              <p className="mt-1 text-xs text-emerald-950/45">
+                Conferma le azioni raccomandate dalla pagina meteo per vederle qui.
+              </p>
+              <Link
+                href="/dashboard/weather"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-600"
+              >
+                <CloudSun className="h-4 w-4" aria-hidden="true" />
+                Vai a Meteo e finestre operative
+              </Link>
+            </div>
+          )}
         </article>
       </section>
     </div>
