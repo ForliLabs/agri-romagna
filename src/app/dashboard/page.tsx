@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   CloudSun,
   Clock3,
@@ -443,7 +444,7 @@ export default async function DashboardPage() {
           sequestrationKg: cc.sequestrationKg,
           netCarbonKg: cc.netCarbonKg,
         }))}
-        forecast={forecast.map((f) => ({
+        forecast={forecastForDisplay.map((f) => ({
           day: f.day,
           maxC: f.maxC,
           minC: f.minC,
@@ -485,18 +486,26 @@ export default async function DashboardPage() {
         </article>
 
         <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
-              <MapPinned className="h-6 w-6" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
+                <MapPinned className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Prossima raccolta
+                </p>
+                <h2 className="text-2xl font-bold text-emerald-950">
+                  {dateFormatter.format(new Date(nextHarvest.plannedDate))} · {nextHarvest.crop}
+                </h2>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                Prossima raccolta
-              </p>
-              <h2 className="text-2xl font-bold text-emerald-950">
-                {dateFormatter.format(new Date(nextHarvest.plannedDate))} · {nextHarvest.crop}
-              </h2>
-            </div>
+            <Link
+              href="/dashboard/fields"
+              className="inline-flex rounded-full border border-emerald-950/10 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:border-emerald-700/30 hover:text-emerald-700"
+            >
+              Vedi tutti i campi
+            </Link>
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {fields.slice(0, 4).map((field) => (
