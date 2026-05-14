@@ -11,7 +11,7 @@ import {
   Droplets,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
-import { fields, harvestSchedule, recentActivity } from "@/lib/data";
+import { fields, harvestSchedule, recentActivity, weatherData } from "@/lib/data";
 import { getCooperativePL, getCashFlowProjection } from "@/lib/financial-data";
 import { getComplianceSummary, getUpcomingDeadlines, complianceRecords } from "@/lib/compliance-data";
 import { getYieldPredictionSummary } from "@/lib/yield-prediction";
@@ -54,6 +54,8 @@ export default async function DashboardPage() {
   const carbonReadiness = getCarbonComplianceReadiness();
 
   const activeAlerts = alerts.filter((a) => a.severity !== "bassa");
+  const forecastForDisplay = forecast.length > 0 ? forecast : weatherData.forecast;
+  const weatherUsingFallback = forecast.length === 0;
 
   return (
     <div className="space-y-8">
@@ -108,11 +110,22 @@ export default async function DashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                Meteo in tempo reale
+                Meteo operativo
               </p>
               <h2 className="mt-2 text-2xl font-bold text-emerald-950">
                 {currentWeather.location} · {currentWeather.condition}
               </h2>
+              <p
+                className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                  weatherUsingFallback
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}
+              >
+                {weatherUsingFallback
+                  ? "OpenMeteo non disponibile · scenario locale stimato"
+                  : "Live · aggiornato in tempo reale"}
+              </p>
             </div>
             <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
               <CloudSun className="h-6 w-6" />

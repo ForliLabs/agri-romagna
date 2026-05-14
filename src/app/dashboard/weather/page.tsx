@@ -62,6 +62,8 @@ export default async function WeatherPage() {
   const activeAlerts = alerts.filter((a) => a.severity !== "bassa");
   const workflowBlocks = weatherWorkflowWindows.filter((window) => window.status === "bloccato").length;
   const workflowWarnings = weatherWorkflowWindows.filter((window) => window.status === "monitorare").length;
+  const forecastForDisplay = forecast.length > 0 ? forecast : weatherData.forecast;
+  const weatherUsingFallback = forecast.length === 0;
 
   return (
     <div className="space-y-8">
@@ -73,8 +75,19 @@ export default async function WeatherPage() {
           Scenario climatico e idrico sulla Romagna forlivese.
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-950/70 sm:text-base">
-          Previsioni a 7 giorni con dati OpenMeteo in tempo reale, fiumi monitorati e pannello di rischio
-          per proteggere raccolto, accessi e logistica.
+          Previsioni a 7 giorni, fiumi monitorati e pannello di rischio per proteggere raccolto, accessi e
+          logistica senza perdere il contesto operativo.
+        </p>
+        <p
+          className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+            weatherUsingFallback
+              ? "bg-amber-100 text-amber-800"
+              : "bg-emerald-100 text-emerald-800"
+          }`}
+        >
+          {weatherUsingFallback
+            ? "OpenMeteo non disponibile · mostriamo uno scenario locale stimato"
+            : "OpenMeteo live · aggiornamento operativo attivo"}
         </p>
       </section>
 
@@ -135,9 +148,8 @@ export default async function WeatherPage() {
               <div className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4 sm:col-span-2">
                 <p className="text-sm text-emerald-950/60">Focus operativo</p>
                 <p className="mt-2 text-sm leading-6 text-emerald-950/75">
-                  {forecast.length > 0 && forecast[0].note
-                    ? forecast[0].note
-                    : "Condizioni variabili: consultare aggiornamento prima di uscire in campo."}
+                  {forecastForDisplay[0]?.note ??
+                    "Condizioni variabili: consultare aggiornamento prima di uscire in campo."}
                 </p>
               </div>
             </div>
@@ -211,7 +223,7 @@ export default async function WeatherPage() {
             </div>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {(forecast.length > 0 ? forecast : weatherData.forecast).map((day) => (
+            {forecastForDisplay.map((day) => (
               <article key={day.date} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -240,7 +252,7 @@ export default async function WeatherPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Livelli fiumi</h2>
-              <p className="text-sm text-emerald-950/65">Montone e Rabbi · aggiornamento live</p>
+              <p className="text-sm text-emerald-950/65">Montone e Rabbi · scenario idrometrico operativo</p>
             </div>
           </div>
           <div className="mt-6 space-y-4">
@@ -350,7 +362,7 @@ export default async function WeatherPage() {
 
       <WeatherCharts
         rainfall={weatherData.historicalRainfall}
-        forecast={(forecast.length > 0 ? forecast : weatherData.forecast).map((f) => ({
+        forecast={forecastForDisplay.map((f) => ({
           day: f.day,
           maxC: f.maxC,
           minC: f.minC,
