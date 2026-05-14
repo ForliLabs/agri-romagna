@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, Radio, Satellite, Sprout, Trees } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import { FieldMapPreview } from "@/components/field-map-preview";
-import { fields } from "@/lib/data";
+import { fields, weatherData } from "@/lib/data";
 import { fieldOperationalPriorities, iotAreaHealth } from "@/lib/operations-insights";
 import { FieldsCrud } from "./crud";
 
@@ -13,15 +13,17 @@ const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
 });
 
 const priorityLookup = new Map(fieldOperationalPriorities.map((item) => [item.fieldId, item]));
-const harvestReadyFields = fields.filter((field) => {
-  const daysUntilHarvest = Math.ceil(
-    (new Date(field.expectedHarvest).getTime() - new Date("2026-05-13T08:30:00+02:00").getTime()) /
-      (24 * 60 * 60 * 1000)
-  );
-  return daysUntilHarvest <= 45;
-}).length;
 
 export default function FieldsPage() {
+  const now = new Date(weatherData.current.observedAt);
+  const harvestReadyFields = fields.filter((field) => {
+    const daysUntilHarvest = Math.ceil(
+      (new Date(field.expectedHarvest).getTime() - now.getTime()) /
+        (24 * 60 * 60 * 1000)
+    );
+    return daysUntilHarvest <= 45;
+  }).length;
+
   return (
     <div className="space-y-8">
       <section>
@@ -157,7 +159,11 @@ export default function FieldsPage() {
                 const priority = priorityLookup.get(field.id);
                 return (
                   <tr key={field.id}>
-                    <td className="px-6 py-4 font-semibold text-emerald-950">{field.name}</td>
+                    <td className="px-6 py-4 font-semibold text-emerald-950">
+                      <Link href={`/dashboard/fields/${field.id}`} className="hover:text-emerald-700 hover:underline">
+                        {field.name}
+                      </Link>
+                    </td>
                     <td className="px-6 py-4 text-emerald-950/75">{field.crop}</td>
                     <td className="px-6 py-4 text-emerald-950/75">{field.areaHa.toLocaleString("it-IT")}</td>
                     <td className="px-6 py-4">
@@ -200,7 +206,11 @@ export default function FieldsPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-emerald-950">{field.name}</h3>
+                    <h3 className="text-xl font-semibold text-emerald-950">
+                      <Link href={`/dashboard/fields/${field.id}`} className="hover:text-emerald-700 hover:underline">
+                        {field.name}
+                      </Link>
+                    </h3>
                     <p className="mt-1 text-sm text-emerald-950/70">
                       {field.crop} · {field.municipality}
                     </p>
