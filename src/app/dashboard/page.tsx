@@ -27,6 +27,13 @@ const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   month: "short",
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat("it-IT", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 const euroFormatter = new Intl.NumberFormat("it-IT", {
   style: "currency",
   currency: "EUR",
@@ -577,6 +584,9 @@ export default async function DashboardPage() {
                     <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
                     {action.recommendedDay} · confermata da {action.confirmedBy}
                   </div>
+                  <p className="mt-1 text-xs text-emerald-950/45">
+                    Registrata il {dateTimeFormatter.format(new Date(action.confirmedAt))}
+                  </p>
                   {action.note && (
                     <p className="mt-2 text-xs italic text-emerald-950/55">{action.note}</p>
                   )}
@@ -590,7 +600,7 @@ export default async function DashboardPage() {
                 Nessuna azione confermata
               </p>
               <p className="mt-1 text-xs text-emerald-950/45">
-                Conferma le azioni raccomandate dalla pagina meteo per vederle qui.
+                Conferma le azioni raccomandate dalla pagina meteo per vederle qui con operatore e orario di presa in carico.
               </p>
               <Link
                 href="/dashboard/weather"
