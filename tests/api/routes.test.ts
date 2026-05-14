@@ -216,3 +216,128 @@ describe("API /api/sync", () => {
     expect(body.data.processed).toBe(1);
   });
 });
+
+describe("API /api/actions", () => {
+  it("GET returns 401 without auth", async () => {
+    const { GET } = await import("@/app/api/actions/route");
+    const request = unauthRequest("http://localhost:3000/api/actions");
+    const response = await GET(request);
+    expect(response.status).toBe(401);
+  });
+
+  it("GET returns actions list with valid auth", async () => {
+    const { GET } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body).toHaveProperty("data");
+    expect(Array.isArray(body.data)).toBe(true);
+  });
+
+  it("POST creates an action with valid payload", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workflow: "irrigazione",
+        recommendedDay: "2026-05-15",
+        recommendation: "Irrigare campo nord",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const body = await response.json();
+    expect(body.data).toHaveProperty("id");
+    expect(body.data.workflow).toBe("irrigazione");
+    expect(body.data.status).toBe("confermata");
+  });
+
+  it("POST returns 400 when workflow is missing", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recommendedDay: "2026-05-15",
+        recommendation: "Irrigare campo nord",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("POST returns 400 when recommendedDay is missing", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workflow: "irrigazione",
+        recommendation: "Irrigare campo nord",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("POST returns 400 for empty body", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("POST returns 400 for invalid JSON", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-json",
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("POST returns 401 without auth", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = unauthRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workflow: "irrigazione",
+        recommendedDay: "2026-05-15",
+        recommendation: "Irrigare campo nord",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(401);
+  });
+
+  it("POST with scheduledDate creates action with pianificata status", async () => {
+    const { POST } = await import("@/app/api/actions/route");
+    const request = authedRequest("http://localhost:3000/api/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workflow: "trattamento-fitosanitario",
+        recommendedDay: "2026-05-20",
+        recommendation: "Trattamento preventivo",
+        scheduledDate: "2026-05-22",
+      }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const body = await response.json();
+    expect(body.data.status).toBe("pianificata");
+    expect(body.data.scheduledDate).toBe("2026-05-22");
+  });
+});
