@@ -219,6 +219,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive ? activeClass : cn(textClass, hoverClass)
@@ -246,6 +247,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive ? activeClass : cn(textClass, hoverClass)
@@ -380,6 +382,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
                     isActive ? "text-emerald-700" : "text-emerald-950/50 hover:text-emerald-700"
