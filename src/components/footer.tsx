@@ -15,9 +15,9 @@ export function Footer({ brand, tagline }: FooterProps) {
             {tagline && <p className="mt-1 text-sm text-emerald-100/80">{tagline}</p>}
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-emerald-100/80">
-            <Link href="/">Piattaforma</Link>
-            <Link href="/dashboard">Dashboard</Link>
-            <a href="mailto:cooperativa@agriromagna.it">Contatti</a>
+            <Link href="/" className="rounded-md px-1 transition hover:text-white focus-visible:text-white">Piattaforma</Link>
+            <Link href="/dashboard" className="rounded-md px-1 transition hover:text-white focus-visible:text-white">Dashboard</Link>
+            <a href="mailto:cooperativa@agriromagna.it" className="rounded-md px-1 transition hover:text-white focus-visible:text-white">Contatti</a>
           </div>
         </div>
         <p className="mt-6 text-center text-xs text-emerald-100/65">

@@ -1,8 +1,7 @@
 "use client";
 
-"use client";
-
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { focusFirstElement, trapFocus } from "@/lib/focus-management";
@@ -20,6 +19,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -56,6 +56,7 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={pathname === item.href ? "page" : undefined}
               className="text-sm font-medium text-emerald-950/75 underline-offset-4 transition-colors hover:text-emerald-700 hover:underline"
             >
               {item.label}
@@ -121,6 +122,7 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={pathname === item.href ? "page" : undefined}
                   className="block rounded-2xl px-3 py-3 text-base font-medium text-emerald-950/85 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
                   onClick={() => setOpen(false)}
                 >

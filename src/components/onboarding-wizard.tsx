@@ -100,11 +100,15 @@ function FormField({
   children,
   required,
   htmlFor,
+  error,
+  errorId,
 }: {
   label: string;
   children: React.ReactNode;
   required?: boolean;
   htmlFor?: string;
+  error?: string;
+  errorId?: string;
 }) {
   return (
     <div>
@@ -113,17 +117,39 @@ function FormField({
         {required ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </label>
       {children}
+      {error ? (
+        <p id={errorId} className="mt-1.5 text-sm text-rose-600" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 const inputClassName =
   "w-full rounded-xl border border-emerald-950/10 bg-[#f7f4ec] px-4 py-2.5 text-sm text-emerald-950 placeholder:text-emerald-950/35 transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20";
+const inputInvalidClassName =
+  "w-full rounded-xl border border-rose-300 bg-[#f7f4ec] px-4 py-2.5 text-sm text-emerald-950 placeholder:text-emerald-950/35 transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20";
 const selectClassName =
   "w-full rounded-xl border border-emerald-950/10 bg-[#f7f4ec] px-4 py-2.5 text-sm text-emerald-950 transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20";
 
+/** Returns the correct input class based on whether the field has an error */
+function inputClass(error?: string) {
+  return error ? inputInvalidClassName : inputClassName;
+}
+
+/** Shared aria props for validated fields */
+function validationProps(fieldKey: string, error?: string) {
+  const errorId = `onb-${fieldKey}-error`;
+  return {
+    "aria-invalid": Boolean(error) as boolean,
+    "aria-describedby": error ? errorId : undefined,
+  };
+}
+
 export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [touched, setTouched] = useState<Set<string>>(new Set());
   const [data, setData] = useState<OnboardingWizardData>({
     cooperativeName: "",
     region: "Emilia-Romagna",
@@ -173,6 +199,25 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
         return false;
     }
   }, [currentStep, data]);
+
+  const fieldErrors = useMemo(() => {
+    const errors: Partial<Record<keyof OnboardingWizardData, string>> = {};
+    if (touched.has("cooperativeName") && data.cooperativeName.trim().length < 2)
+      errors.cooperativeName = "Il nome deve avere almeno 2 caratteri.";
+    if (touched.has("adminName") && data.adminName.trim().length < 2)
+      errors.adminName = "Il nome deve avere almeno 2 caratteri.";
+    if (touched.has("adminEmail") && !data.adminEmail.includes("@"))
+      errors.adminEmail = "Inserisci un indirizzo email valido.";
+    if (touched.has("farmName") && data.farmName.trim().length < 2)
+      errors.farmName = "Il nome deve avere almeno 2 caratteri.";
+    if (touched.has("farmHectares") && data.farmHectares <= 0)
+      errors.farmHectares = "Inserisci un valore maggiore di zero.";
+    return errors;
+  }, [data, touched]);
+
+  const markTouched = useCallback((field: string) => {
+    setTouched((prev) => new Set(prev).add(field));
+  }, []);
 
   const handleNext = useCallback(() => {
     if (isLast) {
@@ -302,7 +347,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Cooperative step */}
             {currentStep === 1 ? (
               <div className="space-y-4">
-                <FormField label="Nome cooperativa" required htmlFor="onb-cooperativeName">
+                <FormField label="Nome cooperativa" required htmlFor="onb-cooperativeName" error={fieldErrors.cooperativeName} errorId="onb-cooperativeName-error">
                   <input
                     id="onb-cooperativeName"
                     type="text"
@@ -310,8 +355,10 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                     onChange={(e) =>
                       updateField("cooperativeName", e.target.value)
                     }
+                    onBlur={() => markTouched("cooperativeName")}
                     placeholder="es. Cooperativa Agricola Bertinoro"
-                    className={inputClassName}
+                    {...validationProps("cooperativeName", fieldErrors.cooperativeName)}
+                    className={inputClass(fieldErrors.cooperativeName)}
                     autoFocus
                   />
                 </FormField>
@@ -330,7 +377,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   </select>
                 </FormField>
                 <FormField label="Piano">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo di piano">
                     {[
                       { value: "cooperativa", label: "Cooperativa" },
                       { value: "azienda", label: "Azienda singola" },
@@ -338,6 +385,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       <button
                         key={option.value}
                         type="button"
+                        aria-pressed={data.plan === option.value}
                         onClick={() => updateField("plan", option.value)}
                         className={cn(
                           "rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition",
@@ -357,25 +405,29 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Admin step */}
             {currentStep === 2 ? (
               <div className="space-y-4">
-                <FormField label="Nome completo" required htmlFor="onb-adminName">
+                <FormField label="Nome completo" required htmlFor="onb-adminName" error={fieldErrors.adminName} errorId="onb-adminName-error">
                   <input
                     id="onb-adminName"
                     type="text"
                     value={data.adminName}
                     onChange={(e) => updateField("adminName", e.target.value)}
+                    onBlur={() => markTouched("adminName")}
                     placeholder="es. Marco Tondini"
-                    className={inputClassName}
+                    {...validationProps("adminName", fieldErrors.adminName)}
+                    className={inputClass(fieldErrors.adminName)}
                     autoFocus
                   />
                 </FormField>
-                <FormField label="Email" required htmlFor="onb-adminEmail">
+                <FormField label="Email" required htmlFor="onb-adminEmail" error={fieldErrors.adminEmail} errorId="onb-adminEmail-error">
                   <input
                     id="onb-adminEmail"
                     type="email"
                     value={data.adminEmail}
                     onChange={(e) => updateField("adminEmail", e.target.value)}
+                    onBlur={() => markTouched("adminEmail")}
                     placeholder="es. marco@cooperativa.it"
-                    className={inputClassName}
+                    {...validationProps("adminEmail", fieldErrors.adminEmail)}
+                    className={inputClass(fieldErrors.adminEmail)}
                   />
                 </FormField>
               </div>
@@ -384,14 +436,16 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Farm step */}
             {currentStep === 3 ? (
               <div className="space-y-4">
-                <FormField label="Nome azienda" required htmlFor="onb-farmName">
+                <FormField label="Nome azienda" required htmlFor="onb-farmName" error={fieldErrors.farmName} errorId="onb-farmName-error">
                   <input
                     id="onb-farmName"
                     type="text"
                     value={data.farmName}
                     onChange={(e) => updateField("farmName", e.target.value)}
+                    onBlur={() => markTouched("farmName")}
                     placeholder="es. Podere San Mamante"
-                    className={inputClassName}
+                    {...validationProps("farmName", fieldErrors.farmName)}
+                    className={inputClass(fieldErrors.farmName)}
                     autoFocus
                   />
                 </FormField>
@@ -408,7 +462,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Ettari" required htmlFor="onb-farmHectares">
+                  <FormField label="Ettari" required htmlFor="onb-farmHectares" error={fieldErrors.farmHectares} errorId="onb-farmHectares-error">
                     <input
                       id="onb-farmHectares"
                       type="number"
@@ -419,10 +473,12 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                           parseFloat(e.target.value) || 0
                         )
                       }
+                      onBlur={() => markTouched("farmHectares")}
                       placeholder="0"
                       min="0"
                       step="0.1"
-                      className={inputClassName}
+                      {...validationProps("farmHectares", fieldErrors.farmHectares)}
+                      className={inputClass(fieldErrors.farmHectares)}
                     />
                   </FormField>
                   <FormField label="Specializzazione" htmlFor="onb-farmSpecialty">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useId, useRef, useEffect, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,8 @@ interface DataTableProps<T> {
   className?: string;
   /** Render as cards on mobile instead of horizontal scroll table. Defaults to true. */
   mobileCards?: boolean;
+  /** Accessible caption / programmatic name for the table */
+  caption?: string;
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -42,11 +44,17 @@ export function DataTable<T extends Record<string, unknown>>({
   pageSize = 10,
   className,
   mobileCards = true,
+  caption,
 }: DataTableProps<T>) {
+  const tableId = useId();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>(null);
   const [page, setPage] = useState(0);
+  // Debounced announcement for screen readers — only after user stops typing
+  const [announcement, setAnnouncement] = useState("");
+  const announceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevAnnouncementRef = useRef("");
 
   const filtered = useMemo(() => {
     if (!query.trim()) return data;
@@ -58,6 +66,26 @@ export function DataTable<T extends Record<string, unknown>>({
       })
     );
   }, [data, query, columns]);
+
+  // Debounce live-region announcements to avoid chatty updates while typing
+  useEffect(() => {
+    if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
+    if (!searchable || !query.trim()) {
+      prevAnnouncementRef.current = "";
+      return;
+    }
+    const count = filtered.length;
+    announceTimerRef.current = setTimeout(() => {
+      const msg = `${count} risultati trovati`;
+      if (msg !== prevAnnouncementRef.current) {
+        prevAnnouncementRef.current = msg;
+        setAnnouncement(msg);
+      }
+    }, 500);
+    return () => {
+      if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
+    };
+  }, [filtered.length, query, searchable]);
 
   const sorted = useMemo(() => {
     if (!sortKey || !sortDir) return filtered;
@@ -86,6 +114,13 @@ export function DataTable<T extends Record<string, unknown>>({
       setSortDir("asc");
     }
     setPage(0);
+  }
+
+  function sortLabel(colKey: string, header: string): string {
+    if (sortKey !== colKey) return `Ordina per ${header}`;
+    return sortDir === "asc"
+      ? `Ordinato per ${header} crescente, attiva per decrescente`
+      : `Ordinato per ${header} decrescente, attiva per rimuovere ordinamento`;
   }
 
   function SortIcon({ colKey }: { colKey: string }) {
@@ -119,6 +154,11 @@ export function DataTable<T extends Record<string, unknown>>({
         </div>
       )}
 
+      {/* Live region for result count — debounced to reduce chatter */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
+
       {/* Mobile card view */}
       {mobileCards ? (
         <div className="block md:hidden">
@@ -134,6 +174,8 @@ export function DataTable<T extends Record<string, unknown>>({
                   row={row}
                   primaryColumns={primaryColumns.length > 0 ? primaryColumns : columns.slice(0, 2)}
                   secondaryColumns={secondaryColumns.length > 0 ? secondaryColumns : columns.slice(2)}
+                  tableId={tableId}
+                  rowKey={String(row[keyField])}
                 />
               ))}
             </div>
@@ -144,17 +186,30 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Desktop table view */}
       <div className={cn("overflow-x-auto", mobileCards && "hidden md:block")}>
         <table className="min-w-full divide-y divide-emerald-950/10 text-left text-sm">
+          {caption ? (
+            <caption className="sr-only">{caption}</caption>
+          ) : null}
           <thead className="bg-[#f7f4ec] text-emerald-950/65">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={cn("px-6 py-4 font-semibold", col.className, col.sortable && "cursor-pointer select-none")}
-                  onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                  className={cn("px-6 py-4 font-semibold", col.className)}
                   aria-sort={sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
                 >
-                  {col.header}
-                  {col.sortable && <SortIcon colKey={col.key} />}
+                  {col.sortable ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 cursor-pointer select-none bg-transparent border-0 p-0 font-semibold text-emerald-950/65 hover:text-emerald-700 transition-colors"
+                      onClick={() => handleSort(col.key)}
+                      aria-label={sortLabel(col.key, col.header)}
+                    >
+                      {col.header}
+                      <SortIcon colKey={col.key} />
+                    </button>
+                  ) : (
+                    col.header
+                  )}
                 </th>
               ))}
             </tr>
@@ -215,12 +270,17 @@ function MobileCard<T extends Record<string, unknown>>({
   row,
   primaryColumns,
   secondaryColumns,
+  tableId,
+  rowKey,
 }: {
   row: T;
   primaryColumns: Column<T>[];
   secondaryColumns: Column<T>[];
+  tableId: string;
+  rowKey: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const detailId = `${tableId}-detail-${rowKey}`;
 
   return (
     <div className="px-4 py-3">
@@ -230,6 +290,7 @@ function MobileCard<T extends Record<string, unknown>>({
         className="flex w-full items-start justify-between gap-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
+        aria-controls={detailId}
       >
         <div className="min-w-0 flex-1 space-y-1">
           {primaryColumns.map((col) => (
@@ -257,7 +318,7 @@ function MobileCard<T extends Record<string, unknown>>({
 
       {/* Expanded secondary info */}
       {expanded && secondaryColumns.length > 0 ? (
-        <div className="mt-3 space-y-2 border-t border-emerald-950/5 pt-3 animate-in-slide-down">
+        <div id={detailId} className="mt-3 space-y-2 border-t border-emerald-950/5 pt-3 animate-in-slide-down">
           {secondaryColumns.map((col) => (
             <div key={col.key} className="flex items-start justify-between gap-3 text-sm">
               <span className="shrink-0 font-medium text-emerald-950/50">

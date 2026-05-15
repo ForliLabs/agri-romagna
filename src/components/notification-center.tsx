@@ -160,7 +160,7 @@ export function NotificationCenter({
           </div>
 
           {/* Notification list */}
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto" role="log" aria-label="Elenco notifiche">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-emerald-950/50 dark:text-emerald-100/50">
                 <Bell
@@ -170,7 +170,7 @@ export function NotificationCenter({
                 <p className="mt-2">Nessuna notifica</p>
               </div>
             ) : (
-              <div className="divide-y divide-emerald-950/5">
+              <ol className="divide-y divide-emerald-950/5 list-none m-0 p-0">
                 {notifications.map((notif) => {
                   const Icon = categoryIcons[notif.category] ?? Bell;
                   const colorClass =
@@ -178,7 +178,7 @@ export function NotificationCenter({
                     "bg-emerald-100 text-emerald-700";
 
                   return (
-                    <div
+                    <li
                       key={notif.id}
                       className={cn(
                         "group flex gap-3 px-4 py-3 transition hover:bg-emerald-50/50 dark:hover:bg-emerald-50/5",
@@ -214,14 +214,15 @@ export function NotificationCenter({
                           {notif.message}
                         </p>
                         <div className="mt-1.5 flex items-center gap-2">
-                          <time className="text-[10px] uppercase tracking-wider text-emerald-950/40 dark:text-emerald-100/40">
+                          <time dateTime={notif.sentAt} className="text-[10px] uppercase tracking-wider text-emerald-950/40 dark:text-emerald-100/40">
                             {formatRelativeTime(notif.sentAt)}
                           </time>
                           {!notif.read && onMarkAsRead ? (
                             <button
                               type="button"
                               onClick={() => onMarkAsRead(notif.id)}
-                              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 opacity-0 transition group-hover:opacity-100 hover:bg-emerald-100"
+                              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-100 focus-visible:bg-emerald-100"
+                              aria-label={`Segna come letta: ${notif.title}`}
                             >
                               <Check className="h-3 w-3" aria-hidden="true" />
                               Letto
@@ -229,10 +230,10 @@ export function NotificationCenter({
                           ) : null}
                         </div>
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ol>
             )}
           </div>
         </div>
