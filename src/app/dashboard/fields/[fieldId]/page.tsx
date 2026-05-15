@@ -10,6 +10,7 @@ import {
   CloudSun,
   Satellite,
   CalendarClock,
+  Activity,
 } from "lucide-react";
 import { fields, weatherData } from "@/lib/data";
 import { fieldOperationalPriorities, deriveWeatherWorkflowWindows } from "@/lib/operations-insights";
@@ -18,6 +19,7 @@ import { getFieldDiseaseRisks } from "@/lib/pest-warning-data";
 import { sensorDevices, getLatestReadings, sensorTypeLabels } from "@/lib/iot-data";
 import { complianceRecords } from "@/lib/compliance-data";
 import { predictYield } from "@/lib/yield-prediction";
+import { EmptyState } from "@/components/ui/states";
 import { getLatestNDVIByField, ndviReadings, ndviToColor, healthStatusLabel } from "@/lib/satellite-data";
 import { fetchForecast, fetchRiverLevels } from "@/lib/weather-service";
 
@@ -83,6 +85,47 @@ export default async function FieldDetailPage({
           {field.crop} · {field.municipality} · {field.areaHa.toLocaleString("it-IT")} ha ·{" "}
           {field.status}
         </p>
+      </section>
+
+      {/* Executive summary banner */}
+      <section
+        className={`rounded-3xl border p-5 ${
+          priority?.severity === "alta"
+            ? "border-rose-200 bg-rose-50"
+            : priority?.severity === "media"
+              ? "border-amber-200 bg-amber-50"
+              : "border-emerald-200 bg-emerald-50"
+        }`}
+      >
+        <div className="flex items-start gap-4">
+          <div className={`rounded-2xl p-3 ${
+            priority?.severity === "alta"
+              ? "bg-rose-100 text-rose-700"
+              : priority?.severity === "media"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-emerald-100 text-emerald-700"
+          }`}>
+            <Activity className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-emerald-950">
+              Sintesi: {field.name}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-emerald-950/75">
+              {daysUntilHarvest > 0
+                ? `${daysUntilHarvest} giorni alla raccolta.`
+                : "Campo pronto alla raccolta."}{" "}
+              Resa prevista {yieldPrediction.predictedYieldKgHa.toLocaleString("it-IT")} kg/ha.{" "}
+              {irrigation.decision === "irrigare" || irrigation.decision === "emergenza"
+                ? `Irrigazione consigliata (${irrigation.volumeLiters.toLocaleString("it-IT")} L).`
+                : "Nessuna irrigazione urgente."}{" "}
+              {diseaseRisks.filter((r) => r.riskLevel === "critical" || r.riskLevel === "high").length > 0
+                ? `${diseaseRisks.filter((r) => r.riskLevel === "critical" || r.riskLevel === "high").length} rischio/i fitosanitario/i elevato/i.`
+                : "Nessun rischio fitosanitario critico."}{" "}
+              {priority?.title ?? "Monitoraggio di routine."}
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* KPI row */}
@@ -227,9 +270,11 @@ export default async function FieldDetailPage({
               </div>
             </div>
           ) : (
-            <p className="mt-6 text-sm text-emerald-950/55">
-              Nessun rilievo NDVI recente disponibile per questo appezzamento.
-            </p>
+            <EmptyState
+              title="Nessun rilievo NDVI"
+              description="Non sono disponibili rilevazioni satellitari recenti per questo appezzamento. Il prossimo passaggio Sentinel-2 aggiornerà i dati."
+              icon={<Satellite className="h-7 w-7" aria-hidden="true" />}
+            />
           )}
         </article>
       </section>
@@ -339,9 +384,11 @@ export default async function FieldDetailPage({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-emerald-950/55">
-                Nessun rischio fitosanitario rilevante per questo campo.
-              </p>
+              <EmptyState
+                title="Nessun rischio fitosanitario"
+                description="Non sono stati rilevati rischi patogeni significativi per questo campo. Continua il monitoraggio preventivo."
+                icon={<Bug className="h-7 w-7" aria-hidden="true" />}
+              />
             )}
           </div>
         </article>
@@ -398,9 +445,19 @@ export default async function FieldDetailPage({
                 );
               })
             ) : (
-              <p className="text-sm text-emerald-950/55">
-                Nessun sensore installato su questo appezzamento.
-              </p>
+              <EmptyState
+                title="Nessun sensore installato"
+                description="Questo appezzamento non ha ancora dispositivi IoT. Installa sensori per monitorare suolo, microclima e irrigazione."
+                icon={<Radio className="h-7 w-7" aria-hidden="true" />}
+                action={
+                  <Link
+                    href="/dashboard/iot"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    Gestisci sensori
+                  </Link>
+                }
+              />
             )}
           </div>
         </article>
@@ -445,9 +502,19 @@ export default async function FieldDetailPage({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-emerald-950/55">
-                Nessun obbligo normativo registrato per questo campo.
-              </p>
+              <EmptyState
+                title="Nessun obbligo normativo"
+                description="Non ci sono obblighi normativi registrati per questo campo. Verifica se servono dichiarazioni PAC o certificazioni."
+                icon={<ShieldCheck className="h-7 w-7" aria-hidden="true" />}
+                action={
+                  <Link
+                    href="/dashboard/compliance"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    Vai a conformità
+                  </Link>
+                }
+              />
             )}
           </div>
         </article>
