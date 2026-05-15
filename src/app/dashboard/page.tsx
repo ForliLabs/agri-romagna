@@ -207,20 +207,32 @@ export default async function DashboardPage() {
           {activeAlerts.length > 0 && (
             <div className="mt-4 space-y-2">
               {activeAlerts.slice(0, 2).map((alert) => (
-                <div
+                <Link
                   key={alert.id}
+                  href="/dashboard/weather"
                   role="alert"
-                  className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium ${
+                  className={`flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                     alert.severity === "alta"
-                      ? "bg-rose-100 text-rose-800"
-                      : "bg-amber-100 text-amber-800"
+                      ? "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                      : "bg-amber-100 text-amber-800 hover:bg-amber-200"
                   }`}
                 >
-                  <TriangleAlert className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <span className="sr-only">Severità {alert.severity}:</span>
-                  {alert.title}
-                </div>
+                  <span className="flex items-center gap-3">
+                    <TriangleAlert className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <span className="sr-only">Severità {alert.severity}:</span>
+                    {alert.title}
+                  </span>
+                  <span className="flex-shrink-0 text-xs font-semibold opacity-70">Dettagli →</span>
+                </Link>
               ))}
+              {activeAlerts.length > 2 && (
+                <Link
+                  href="/dashboard/weather"
+                  className="block text-center text-xs font-semibold text-emerald-700 hover:text-emerald-600"
+                >
+                  +{activeAlerts.length - 2} altr{activeAlerts.length - 2 === 1 ? "o" : "i"} allert{activeAlerts.length - 2 === 1 ? "a" : "e"} — vedi tutto →
+                </Link>
+              )}
             </div>
           )}
           {/* River levels compact */}
