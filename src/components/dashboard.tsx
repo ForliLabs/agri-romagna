@@ -409,6 +409,12 @@ interface StatCardProps {
   value: string;
   change?: string;
   trend?: "up" | "down" | "neutral";
+  /** One-line actionable interpretation of the KPI value */
+  interpretation?: string;
+  /** Optional CTA link rendered below the card content */
+  actionHref?: string;
+  /** Label for the CTA link */
+  actionLabel?: string;
 }
 
 const trendPrefixes: Record<NonNullable<StatCardProps["trend"]>, string> = {
@@ -423,7 +429,7 @@ const trendLabels: Record<NonNullable<StatCardProps["trend"]>, string> = {
   neutral: "Stabile",
 };
 
-export function StatCard({ label, value, change, trend = "neutral" }: StatCardProps) {
+export function StatCard({ label, value, change, trend = "neutral", interpretation, actionHref, actionLabel }: StatCardProps) {
   return (
     <div className="rounded-2xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
       <p className="text-sm font-medium text-emerald-950/60">{label}</p>
@@ -441,6 +447,18 @@ export function StatCard({ label, value, change, trend = "neutral" }: StatCardPr
           <span className="mr-1" aria-hidden="true">{trendPrefixes[trend]}</span>
           {change}
         </p>
+      ) : null}
+      {interpretation ? (
+        <p className="mt-2 text-xs leading-5 text-emerald-950/50">{interpretation}</p>
+      ) : null}
+      {actionHref && actionLabel ? (
+        <Link
+          href={actionHref}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-600"
+        >
+          {actionLabel}
+          <span aria-hidden="true">→</span>
+        </Link>
       ) : null}
     </div>
   );

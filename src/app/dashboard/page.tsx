@@ -93,24 +93,54 @@ export default async function DashboardPage() {
           value={euroFormatter.format(pl.netMargin)}
           change={`${pl.netMarginPercent >= 0 ? "+" : ""}${pl.netMarginPercent.toFixed(1)}% sul fatturato`}
           trend={pl.netMargin >= 0 ? "up" : "down"}
+          interpretation={
+            pl.netMargin >= 0
+              ? "Margine sano — valuta investimenti in meccanizzazione o certificazioni."
+              : "Margine negativo — rivedi costi operativi e sussidi PAC disponibili."
+          }
+          actionHref="/dashboard/financial"
+          actionLabel="Apri conto economico"
         />
         <StatCard
           label="Resa media prevista"
           value={`${yieldSummary.averageYieldKgHa.toLocaleString("it-IT")} kg/ha`}
           change={`${yieldSummary.harvestReadySoon} campi pronti alla raccolta`}
           trend="up"
+          interpretation={
+            yieldSummary.fieldsWithElevatedRisk > 0
+              ? `${yieldSummary.fieldsWithElevatedRisk} camp${yieldSummary.fieldsWithElevatedRisk === 1 ? "o" : "i"} a rischio — verifica irrigazione e fitosanitario.`
+              : "Rese nella norma — nessun intervento urgente richiesto."
+          }
+          actionHref="/dashboard/fields"
+          actionLabel="Vedi campi"
         />
         <StatCard
           label="Bilancio CO₂"
           value={`${(carbonSummary.netCarbonKg / 1000).toFixed(1)} t`}
           change={carbonSummary.netCarbonKg <= 0 ? "Carbon-negative ✓" : `${carbonSummary.intensityKgPerHa.toFixed(0)} kg/ha`}
           trend={carbonSummary.netCarbonKg <= 0 ? "up" : "neutral"}
+          interpretation={
+            carbonSummary.netCarbonKg <= 0
+              ? "Obiettivo carbon-negative raggiunto — idoneo a crediti di carbonio."
+              : "Emissioni nette positive — valuta pratiche rigenerative per compensare."
+          }
+          actionHref="/dashboard/carbon"
+          actionLabel="Dettaglio emissioni"
         />
         <StatCard
           label="Conformità normativa"
           value={`${compliance.completionRate}%`}
           change={`${compliance.scaduto} scadut${compliance.scaduto === 1 ? "o" : "i"} · ${compliance.inCorso} in corso`}
           trend={compliance.scaduto === 0 ? "up" : "down"}
+          interpretation={
+            compliance.scaduto > 0
+              ? "Ci sono scadenze superate — intervieni per evitare sanzioni."
+              : compliance.inCorso > 0
+                ? "Nessuna scadenza superata — completa le pratiche in corso."
+                : "Piena conformità — nessuna azione richiesta."
+          }
+          actionHref="/dashboard/compliance"
+          actionLabel="Gestisci scadenze"
         />
       </section>
 
