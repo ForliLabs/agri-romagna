@@ -36,25 +36,44 @@ export function CrudDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Capture previous focus on open transition, restore on close transition
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+      requestAnimationFrame(() => focusFirstElement(dialogRef.current));
+    }
+    if (!open && wasOpenRef.current) {
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
-    // Focus first focusable element when dialog opens
-    requestAnimationFrame(() => focusFirstElement(dialogRef.current));
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       trapFocus(e, dialogRef.current);
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -104,11 +123,11 @@ export function CrudDialog({
           </button>
         </div>
         {error && (
-          <div role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
+          <div id="crud-dialog-error" role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
             {error}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4" aria-describedby={error ? "crud-dialog-error" : undefined}>
           {fields.map((field) => (
             <div key={field.name}>
               <label htmlFor={`crud-${field.name}`} className="block text-sm font-medium text-emerald-950/75 dark:text-emerald-100/75">

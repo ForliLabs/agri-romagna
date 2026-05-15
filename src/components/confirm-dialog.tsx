@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { focusFirstElement, trapFocus } from "@/lib/focus-management";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -11,6 +12,8 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   cancelLabel?: string;
   loading?: boolean;
+  /** When true, uses alertdialog role for destructive actions */
+  destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,22 +25,39 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Annulla",
   loading = false,
+  destructive = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const onCancelRef = useRef(onCancel);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
+  // Capture the previously focused element only on open transition
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+      focusFirstElement(panelRef.current);
+    }
+    if (!open && wasOpenRef.current) {
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
-    previousFocusRef.current = document.activeElement as HTMLElement | null;
-    focusFirstElement(panelRef.current);
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel();
+        onCancelRef.current();
         return;
       }
 
@@ -47,9 +67,8 @@ export function ConfirmDialog({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      previousFocusRef.current?.focus();
     };
-  }, [open, onCancel]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -57,7 +76,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-emerald-950/55 px-4 backdrop-blur-sm" role="presentation">
       <div
         ref={panelRef}
-        role="dialog"
+        role={destructive ? "alertdialog" : "dialog"}
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
@@ -99,7 +118,12 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="rounded-full bg-emerald-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60",
+              destructive
+                ? "bg-rose-700 hover:bg-rose-800"
+                : "bg-emerald-800 hover:bg-emerald-700"
+            )}
           >
             {loading ? "Operazione in corso…" : confirmLabel}
           </button>

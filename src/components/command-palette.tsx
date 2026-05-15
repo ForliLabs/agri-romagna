@@ -79,10 +79,12 @@ export function CommandPalette({ items }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<Element | null>(null);
 
   const toggle = useCallback(() => {
     setOpen((prev) => {
       if (!prev) {
+        triggerRef.current = document.activeElement;
         setQuery("");
         setSelectedIndex(0);
       }
@@ -149,6 +151,13 @@ export function CommandPalette({ items }: CommandPaletteProps) {
     }
   }, [selectedIndex]);
 
+  const closePalette = useCallback(() => {
+    setOpen(false);
+    if (triggerRef.current instanceof HTMLElement) {
+      triggerRef.current.focus();
+    }
+  }, []);
+
   const navigateTo = useCallback(
     (href: string) => {
       setOpen(false);
@@ -176,11 +185,11 @@ export function CommandPalette({ items }: CommandPaletteProps) {
           break;
         case "Escape":
           event.preventDefault();
-          setOpen(false);
+          closePalette();
           break;
       }
     },
-    [flatFiltered, selectedIndex, navigateTo]
+    [flatFiltered, selectedIndex, navigateTo, closePalette]
   );
 
   if (!open) return null;
@@ -189,15 +198,13 @@ export function CommandPalette({ items }: CommandPaletteProps) {
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] sm:pt-[20vh]"
       role="presentation"
-      onClick={() => setOpen(false)}
+      onClick={() => closePalette()}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in-fade" />
       <div
         ref={dialogRef}
-        role="combobox"
-        aria-controls="command-palette-list"
-        aria-expanded="true"
-        aria-haspopup="listbox"
+        role="dialog"
+        aria-modal="true"
         aria-label="Palette comandi — cerca tra i moduli"
         className="relative z-10 mx-4 w-full max-w-xl animate-in-scale overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-2xl shadow-emerald-950/20"
         onClick={(e) => e.stopPropagation()}
@@ -212,6 +219,7 @@ export function CommandPalette({ items }: CommandPaletteProps) {
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -220,6 +228,7 @@ export function CommandPalette({ items }: CommandPaletteProps) {
             placeholder="Cerca moduli, flussi, analytics…"
             className="min-w-0 flex-1 bg-transparent text-sm text-emerald-950 outline-none placeholder:text-emerald-950/40"
             aria-label="Cerca moduli"
+            aria-expanded="true"
             aria-autocomplete="list"
             aria-controls="command-palette-list"
             aria-activedescendant={
