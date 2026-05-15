@@ -63,16 +63,14 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background text-foreground selection:bg-emerald-200 selection:text-emerald-950">
         <a
-          href="#main-content"
+          href="#main"
           className="skip-link fixed left-4 top-4 z-[110] -translate-y-20 rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white shadow-lg transition focus:translate-y-0"
         >
           Vai al contenuto principale
         </a>
         <ToastProvider>
           <ServiceWorkerRegistration />
-          <div id="main-content" tabIndex={-1}>
-            {children}
-          </div>
+          {children}
         </ToastProvider>
       </body>
     </html>

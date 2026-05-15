@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+    <main id="main" className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
         Errore 404
       </p>
@@ -19,6 +19,6 @@ export default function NotFound() {
       >
         Torna alla home
       </Link>
-    </div>
+    </main>
   );
 }

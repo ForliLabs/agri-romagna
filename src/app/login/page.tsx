@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Lock, Mail, Phone, Sprout } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Phone, Sprout } from "lucide-react";
 import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/toast-provider";
@@ -35,6 +35,7 @@ function LoginPageContent() {
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpRequested, setOtpRequested] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [banner, setBanner] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loadingState, setLoadingState] = useState<LoadingState>("idle");
@@ -219,7 +220,7 @@ function LoginPageContent() {
         <p className="text-xs text-emerald-50/50">© {new Date().getFullYear()} AgriRomagna</p>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
+      <main id="main" className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
         <div className="w-full max-w-lg rounded-[2rem] border border-emerald-950/10 bg-white/85 p-6 shadow-xl shadow-emerald-950/5 backdrop-blur sm:p-8">
           <div className="lg:hidden">
             <Link href="/" className="flex items-center gap-2 text-xl font-bold text-emerald-950">
@@ -321,7 +322,7 @@ function LoginPageContent() {
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-950/40" aria-hidden="true" />
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     onBlur={(event) => setSingleFieldError("password", event.target.value)}
@@ -329,10 +330,20 @@ function LoginPageContent() {
                     aria-invalid={Boolean(fieldErrors.password)}
                     aria-describedby={fieldErrors.password ? "password-error" : "password-hint"}
                     className={cn(
-                      "w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm text-emerald-950 placeholder:text-emerald-950/35",
+                      "w-full rounded-xl border bg-white py-3 pl-10 pr-12 text-sm text-emerald-950 placeholder:text-emerald-950/35",
                       fieldErrors.password ? "border-rose-300" : "border-emerald-950/15"
                     )}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-emerald-950/40 transition hover:text-emerald-950/70"
+                    aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                  >
+                    {showPassword
+                      ? <EyeOff className="h-4 w-4" aria-hidden="true" />
+                      : <Eye className="h-4 w-4" aria-hidden="true" />}
+                  </button>
                 </div>
                 <p id="password-hint" className="mt-2 text-sm text-emerald-950/55">
                   Usa la password del tuo account cooperativa o del profilo demo di sviluppo.

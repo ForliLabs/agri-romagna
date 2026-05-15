@@ -15,7 +15,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+    <main id="main" className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center" role="alert">
       <div className="w-full max-w-lg rounded-3xl border border-rose-200 bg-rose-50 p-8 shadow-sm shadow-rose-950/5">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-700">
           Errore
@@ -36,6 +36,6 @@ export default function Error({
           Riprova
         </button>
       </div>
-    </div>
+    </main>
   );
 }

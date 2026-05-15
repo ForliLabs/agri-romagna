@@ -366,7 +366,7 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 py-8 sm:px-8">
+      <main id="main" className="flex-1 px-4 py-8 sm:px-8">
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.55fr]">
           <section className="rounded-[2rem] border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5 sm:p-8">
             {banner ? (

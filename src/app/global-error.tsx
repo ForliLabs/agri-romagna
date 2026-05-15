@@ -9,7 +9,7 @@ export default function GlobalError({
   return (
     <html lang="it">
       <body className="flex min-h-screen items-center justify-center bg-[#eff3ea] px-4 text-emerald-950">
-        <div className="w-full max-w-lg rounded-3xl border border-emerald-950/10 bg-white p-8 text-center shadow-xl shadow-emerald-950/10">
+        <main id="main" role="alert" className="w-full max-w-lg rounded-3xl border border-emerald-950/10 bg-white p-8 text-center shadow-xl shadow-emerald-950/10">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
             Errore applicativo
           </p>
@@ -24,7 +24,7 @@ export default function GlobalError({
           >
             Riprova
           </button>
-        </div>
+        </main>
       </body>
     </html>
   );

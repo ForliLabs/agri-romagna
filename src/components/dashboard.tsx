@@ -369,7 +369,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-10 page-transition">
+        <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-10 page-transition">
           <Breadcrumb />
           {children}
         </main>
@@ -384,7 +384,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                   href={tab.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
+                    "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
                     isActive ? "text-emerald-700" : "text-emerald-950/50 hover:text-emerald-700"
                   )}
                 >

@@ -84,7 +84,7 @@ export default async function TraceabilityPublicPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main id="main" className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {/* Farm info */}
         <section className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm">
           <div className="flex items-center gap-3">

@@ -90,7 +90,7 @@ export default function Home() {
         ctaHref="/login"
       />
 
-      <main>
+      <main id="main">
         <section className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-green-900 to-lime-700 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(244,206,138,0.16),transparent_24%)]" />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-28">
