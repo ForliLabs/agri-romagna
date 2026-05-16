@@ -8,9 +8,12 @@ import {
   Shield,
   ArrowLeft,
   Sprout,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { QrBadge } from "@/components/qr-badge";
 import { buildDPP, productLots } from "@/lib/traceability-data";
+import { ShareCopyButton } from "./share-copy-button";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -46,6 +49,35 @@ export default async function TraceabilityPublicPage({
   const { lotId } = await params;
   const dpp = buildDPP(lotId);
   if (!dpp) notFound();
+
+  // Provenance completeness: farm info, events, quality, certifications
+  const allPhases = ["campo", "raccolta", "trasporto", "lavorazione", "confezionamento", "distribuzione"];
+  const coveredPhases = new Set(dpp.events.map((e) => e.phase));
+  const phaseCoverage = Math.round((coveredPhases.size / allPhases.length) * 100);
+  const hasQuality = dpp.quality.length > 0;
+  const hasCerts = dpp.certifications.length > 0;
+  const verifiedRate = dpp.events.length > 0
+    ? Math.round((dpp.events.filter((e) => e.verified).length / dpp.events.length) * 100)
+    : 0;
+  // Weighted: 40% phase coverage, 30% verified events, 15% quality, 15% certs
+  const completenessScore = Math.round(
+    phaseCoverage * 0.4 + verifiedRate * 0.3 + (hasQuality ? 100 : 0) * 0.15 + (hasCerts ? 100 : 0) * 0.15
+  );
+  const completenessLabel = completenessScore >= 90
+    ? "Provenienza completa"
+    : completenessScore >= 70
+      ? "Provenienza parziale"
+      : "Provenienza da integrare";
+  const completenessColor = completenessScore >= 90
+    ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+    : completenessScore >= 70
+      ? "text-amber-700 bg-amber-50 border-amber-200"
+      : "text-rose-700 bg-rose-50 border-rose-200";
+  const completenessBarColor = completenessScore >= 90
+    ? "bg-emerald-600"
+    : completenessScore >= 70
+      ? "bg-amber-500"
+      : "bg-rose-500";
 
   return (
     <div className="min-h-screen bg-[#f4f1e8]">
@@ -109,6 +141,42 @@ export default async function TraceabilityPublicPage({
             </div>
           )}
         </section>
+
+        {/* Provenance completeness signal */}
+        <section className={`mt-6 rounded-3xl border p-5 ${completenessColor}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {completenessScore >= 90 ? (
+                <CheckCircle2 className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+              )}
+              <div>
+                <p className="text-sm font-semibold">{completenessLabel}</p>
+                <p className="mt-0.5 text-xs opacity-80">
+                  {coveredPhases.size}/{allPhases.length} fasi · {verifiedRate}% verificato{hasQuality ? " · qualità allegata" : ""}
+                </p>
+              </div>
+            </div>
+            <span className="text-lg font-bold">{completenessScore}%</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/60">
+            <div
+              className={`h-full rounded-full ${completenessBarColor}`}
+              style={{ width: `${completenessScore}%` }}
+              role="progressbar"
+              aria-valuenow={completenessScore}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Completezza provenienza: ${completenessScore}%`}
+            />
+          </div>
+        </section>
+
+        {/* Share / Copy action */}
+        <div className="mt-6 flex justify-center">
+          <ShareCopyButton lotCode={dpp.lotCode} lotId={dpp.lotId} />
+        </div>
 
         {/* Timeline */}
         <section className="mt-8">
