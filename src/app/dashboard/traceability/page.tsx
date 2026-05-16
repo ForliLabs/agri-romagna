@@ -5,6 +5,8 @@ import {
   Leaf,
   Package,
   Shield,
+  TriangleAlert,
+  ArrowRight,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import { QrBadge } from "@/components/qr-badge";
@@ -82,12 +84,29 @@ export default function TraceabilityPage() {
           </div>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          {traceabilityIntegrityOverview.map((item) => (
-            <article key={item.lotId} className="rounded-2xl border border-emerald-950/10 bg-[#f7f4ec] p-4">
+          {traceabilityIntegrityOverview.map((item) => {
+            const isWeak = item.integrityScore < 70;
+            const isModerate = item.integrityScore >= 70 && item.integrityScore < 80;
+            return (
+            <article
+              key={item.lotId}
+              className={`rounded-2xl border p-4 ${
+                isWeak
+                  ? "border-rose-200 bg-rose-50/50"
+                  : isModerate
+                    ? "border-amber-200 bg-amber-50/30"
+                    : "border-emerald-950/10 bg-[#f7f4ec]"
+              }`}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-emerald-950">{item.product}</p>
-                  <p className="mt-1 text-xs font-mono text-emerald-700">{item.lotCode}</p>
+                <div className="flex items-start gap-2">
+                  {isWeak && (
+                    <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600" aria-hidden="true" />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-950">{item.product}</p>
+                    <p className="mt-1 text-xs font-mono text-emerald-700">{item.lotCode}</p>
+                  </div>
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -121,8 +140,43 @@ export default function TraceabilityPage() {
                   ? ` Fasi mancanti: ${item.missingPhases.join(", ")}.`
                   : " catena completa su tutte le fasi previste."}
               </p>
+              {/* Actionable CTAs for weak and moderate lots */}
+              {(isWeak || isModerate) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.missingPhases.length > 0 && (
+                    <Link
+                      href="/dashboard/supply-chain"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        isWeak
+                          ? "bg-rose-700 text-white hover:bg-rose-800"
+                          : "bg-amber-600 text-white hover:bg-amber-700"
+                      }`}
+                    >
+                      Registra fasi mancanti
+                      <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                    </Link>
+                  )}
+                  {item.qualityCoverage === 0 && (
+                    <Link
+                      href="/dashboard/compliance"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-950/15 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                    >
+                      Allega referto qualità
+                    </Link>
+                  )}
+                  {item.complianceStatus === "da integrare" && (
+                    <Link
+                      href="/dashboard/compliance-chain"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-950/15 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                    >
+                      Allinea compliance
+                    </Link>
+                  )}
+                </div>
+              )}
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 
