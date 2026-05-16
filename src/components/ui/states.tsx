@@ -45,18 +45,21 @@ export function EmptyState({
   description,
   action,
   icon,
+  headingLevel: HeadingTag = "h2",
 }: {
   title: string;
   description: string;
   action?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Heading level for semantic hierarchy. Defaults to "h2". */
+  headingLevel?: "h2" | "h3" | "h4" | "p";
 }) {
   return (
     <div className="rounded-3xl border border-dashed border-emerald-950/20 bg-white/70 px-6 py-10 text-center shadow-sm shadow-emerald-950/5">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
         {icon ?? <Inbox className="h-7 w-7" aria-hidden="true" />}
       </div>
-      <h2 className="mt-4 text-xl font-semibold text-emerald-950">{title}</h2>
+      <HeadingTag className="mt-4 text-xl font-semibold text-emerald-950">{title}</HeadingTag>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-emerald-950/65">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
