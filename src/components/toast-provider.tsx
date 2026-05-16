@@ -68,6 +68,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timeoutIds = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const progressIntervals = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const hoveredToasts = useRef<Set<string>>(new Set());
+  /** Track paused elapsed time so progress resumes correctly after hover/focus */
+  const pausedAtRef = useRef<Record<string, number>>({});
+  const startTimeRef = useRef<Record<string, number>>({});
 
   // Cleanup all timers on unmount to prevent memory leaks
   useEffect(() => {
@@ -116,13 +119,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       ]);
 
       if (duration > 0) {
-        const startTime = Date.now();
+        startTimeRef.current[id] = Date.now();
         const intervalMs = 50;
 
         progressIntervals.current[id] = setInterval(() => {
-          if (hoveredToasts.current.has(id)) return; // Pause on hover
+          if (hoveredToasts.current.has(id)) {
+            // Record when pause started (only once)
+            if (!pausedAtRef.current[id]) {
+              pausedAtRef.current[id] = Date.now();
+            }
+            return;
+          }
 
-          const elapsed = Date.now() - startTime;
+          // If resuming from pause, shift start time by pause duration
+          if (pausedAtRef.current[id]) {
+            const pauseDuration = Date.now() - pausedAtRef.current[id];
+            startTimeRef.current[id] += pauseDuration;
+            delete pausedAtRef.current[id];
+          }
+
+          const elapsed = Date.now() - startTimeRef.current[id];
           const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
 
           if (remaining <= 0) {
@@ -147,6 +163,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const handleMouseLeave = useCallback((id: string) => {
     hoveredToasts.current.delete(id);
   }, []);
+
+  const handleFocus = useCallback((id: string) => {
+    hoveredToasts.current.add(id);
+  }, []);
+
+  const handleBlur = useCallback((id: string) => {
+    hoveredToasts.current.delete(id);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, id: string) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dismissToast(id);
+      }
+    },
+    [dismissToast]
+  );
 
   const handleUndo = useCallback(
     (toast: ToastItem) => {
@@ -196,6 +230,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={() => handleUndo(toast)}
+                    onFocus={() => handleFocus(toast.id)}
+                    onBlur={() => handleBlur(toast.id)}
                     className="flex shrink-0 items-center gap-1.5 rounded-lg border border-current/15 px-2.5 py-1 text-xs font-semibold transition hover:bg-black/5"
                     aria-label="Annulla azione"
                   >
@@ -206,6 +242,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => dismissToast(toast.id)}
+                  onFocus={() => handleFocus(toast.id)}
+                  onBlur={() => handleBlur(toast.id)}
+                  onKeyDown={(e) => handleKeyDown(e, toast.id)}
                   className="rounded-full p-1 text-current/60 transition hover:bg-black/5 hover:text-current"
                   aria-label="Chiudi notifica"
                 >
