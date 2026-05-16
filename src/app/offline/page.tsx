@@ -10,7 +10,7 @@ export default function OfflinePage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-          <WifiOff className="h-10 w-10" />
+          <WifiOff className="h-10 w-10" aria-hidden="true" />
         </div>
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-emerald-950">
           Sei offline
@@ -25,7 +25,7 @@ export default function OfflinePage() {
             href="/dashboard"
             className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-800 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Riprova
           </Link>
           <Link

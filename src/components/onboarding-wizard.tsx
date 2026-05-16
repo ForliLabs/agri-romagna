@@ -299,7 +299,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
         {/* Step content card */}
         <div className="animate-in-fade rounded-3xl border border-emerald-950/10 bg-white p-6 shadow-lg shadow-emerald-950/5 sm:p-8">
           <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
+            <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700" aria-hidden="true">
               {step.icon}
             </div>
             <div>
@@ -331,7 +331,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       key={feature.text}
                       className="flex items-center gap-2.5 rounded-xl border border-emerald-950/5 bg-emerald-50/50 px-3 py-2.5"
                     >
-                      <span className="text-emerald-700">{feature.icon}</span>
+                      <span className="text-emerald-700" aria-hidden="true">{feature.icon}</span>
                       <span className="font-medium text-emerald-950">
                         {feature.text}
                       </span>

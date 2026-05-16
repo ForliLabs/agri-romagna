@@ -96,7 +96,7 @@ export default function Home() {
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-28">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50/90">
-                <MapPinned className="h-4 w-4" />
+                <MapPinned className="h-4 w-4" aria-hidden="true" />
                 Bertinoro · Forlì · Romagna agricola
               </div>
               <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
@@ -199,7 +199,7 @@ export default function Home() {
                 className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800">
-                  <Icon className="h-6 w-6" />
+                  <Icon className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <h3 className="mt-5 text-xl font-semibold text-emerald-950">{title}</h3>
                 <p className="mt-3 text-sm leading-7 text-emerald-950/70">{description}</p>
