@@ -12,6 +12,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { BarChart3 } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 
 interface ChartContainerProps {
   title: string;
@@ -20,38 +22,54 @@ interface ChartContainerProps {
   height?: number;
   /** Data rows for an sr-only accessible table behind the chart */
   accessibleData?: { headers: string[]; rows: (string | number)[][] };
+  /** Optional: pass the data array so ChartContainer can render EmptyState when empty */
+  dataLength?: number;
+  /** Custom empty-state message */
+  emptyMessage?: string;
 }
 
-export function ChartContainer({ title, subtitle, children, height = 300, accessibleData }: ChartContainerProps) {
+export function ChartContainer({ title, subtitle, children, height = 300, accessibleData, dataLength, emptyMessage }: ChartContainerProps) {
+  const isEmpty = dataLength !== undefined && dataLength === 0;
+
   return (
     <div className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5 dark:border-emerald-50/10 dark:bg-[#162b1e]/90">
       <div className="mb-6">
         <h3 className="text-lg font-bold text-emerald-950 dark:text-emerald-50">{title}</h3>
         {subtitle && <p className="mt-1 text-sm text-emerald-950/65 dark:text-emerald-100/65">{subtitle}</p>}
       </div>
-      <div style={{ width: "100%", height }} role="img" aria-label={title}>
-        {children}
-      </div>
-      {accessibleData && (
-        <table className="sr-only">
-          <caption>{title}</caption>
-          <thead>
-            <tr>
-              {accessibleData.headers.map((h) => (
-                <th key={h} scope="col">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {accessibleData.rows.map((row, i) => (
-              <tr key={i}>
-                {row.map((cell, j) => (
-                  <td key={j}>{typeof cell === "number" ? cell.toLocaleString("it-IT") : cell}</td>
+      {isEmpty ? (
+        <EmptyState
+          title="Nessun dato disponibile"
+          description={emptyMessage ?? `Non ci sono ancora dati per "${title}". I dati appariranno quando saranno disponibili.`}
+          icon={<BarChart3 className="h-7 w-7" aria-hidden="true" />}
+        />
+      ) : (
+        <>
+          <div style={{ width: "100%", height }} role="img" aria-label={title}>
+            {children}
+          </div>
+          {accessibleData && (
+            <table className="sr-only">
+              <caption>{title}</caption>
+              <thead>
+                <tr>
+                  {accessibleData.headers.map((h) => (
+                    <th key={h} scope="col">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {accessibleData.rows.map((row, i) => (
+                  <tr key={i}>
+                    {row.map((cell, j) => (
+                      <td key={j}>{typeof cell === "number" ? cell.toLocaleString("it-IT") : cell}</td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );
@@ -96,6 +114,7 @@ export function CashFlowChart({ data }: { data: CashFlowDataPoint[] }) {
     <ChartContainer
       title="Andamento di cassa"
       subtitle="Entrate, uscite e saldo cumulato nei prossimi 6 mesi"
+      dataLength={data.length}
       accessibleData={{
         headers: ["Mese", "Entrate (€)", "Uscite (€)", "Flusso netto (€)", "Cassa cumulata (€)"],
         rows: data.map((d) => [d.month, d.inflows, d.outflows, d.netCashFlow, d.cumulativeCash]),
@@ -127,6 +146,7 @@ export function CostBreakdownChart({ data }: { data: CostBreakdownDataPoint[] })
     <ChartContainer
       title="Distribuzione costi"
       subtitle="Categorie di spesa cooperativa"
+      dataLength={data.length}
       accessibleData={{
         headers: ["Categoria", "Importo (€)", "Quota (%)"],
         rows: data.map((d) => [d.label, d.totalAmount, d.sharePercent]),
@@ -159,6 +179,7 @@ export function SensorTrendChart({ data, sensorName, unit }: { data: SensorHisto
       title={`Trend ${sensorName}`}
       subtitle={`Ultime 24 ore (${unit})`}
       height={250}
+      dataLength={data.length}
       accessibleData={{
         headers: ["Ora", `${sensorName} (${unit})`],
         rows: data.map((d) => [d.label, d.value]),
@@ -199,6 +220,7 @@ export function CarbonBalanceChart({ data }: { data: CarbonCategoryPoint[] }) {
     <ChartContainer
       title="Bilancio carbonico per categoria"
       subtitle="Emissioni vs sequestro (kg CO₂e)"
+      dataLength={data.length}
       accessibleData={{
         headers: ["Categoria", "Emissioni (kg)", "Sequestro (kg)", "Netto (kg)"],
         rows: data.map((d) => [d.label, d.emissionsKg, d.sequestrationKg, d.netCarbonKg]),
@@ -231,6 +253,7 @@ export function RainfallChart({ data }: { data: RainfallPoint[] }) {
     <ChartContainer
       title="Storico piogge"
       subtitle="Andamento precipitazioni nelle ultime settimane (mm)"
+      dataLength={data.length}
       accessibleData={{
         headers: ["Periodo", "Pioggia (mm)"],
         rows: data.map((d) => [d.label, d.mm]),
@@ -261,6 +284,7 @@ export function ForecastChart({ data }: { data: ForecastPoint[] }) {
     <ChartContainer
       title="Temperature 7 giorni"
       subtitle="Minime, massime e probabilità pioggia"
+      dataLength={data.length}
       accessibleData={{
         headers: ["Giorno", "Max °C", "Min °C", "Probabilità pioggia (%)"],
         rows: data.map((d) => [d.day, d.maxC, d.minC, d.rainProbability]),
