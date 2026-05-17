@@ -14,6 +14,7 @@ import {
   ThermometerSun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 export type InspectionCheckStatus = "pending" | "ok" | "issue" | "skipped";
 
@@ -270,12 +271,21 @@ export function MobileFieldInspection({
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-50/15">
-            <div
-              className="h-full rounded-full bg-emerald-400 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <ProgressBar
+            value={progress}
+            label={`Progresso ispezione: ${completedCount} di ${totalSteps} controlli completati`}
+            colorClass="bg-emerald-400"
+            height="h-1.5"
+            className="mt-1"
+          />
+        </div>
+        {/* Live region to announce step and status changes to screen readers */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          Passo {currentStep + 1} di {totalSteps}: {currentCheck?.label ?? ""}
+          {currentCheck?.status !== "pending"
+            ? ` — ${statusConfig[currentCheck.status].label}`
+            : ""}
+          {` · ${completedCount} di ${totalSteps} completati`}
         </div>
       </header>
 
@@ -311,7 +321,7 @@ export function MobileFieldInspection({
         <div className="flex-1 px-4 py-5 animate-in-fade">
           <div className="rounded-2xl border border-emerald-950/10 bg-white p-5">
             <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
+              <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700" aria-hidden="true">
                 {currentCheck.icon}
               </div>
               <div className="min-w-0 flex-1">
