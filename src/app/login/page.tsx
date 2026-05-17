@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Phone, Sprout } from "lucide-react";
@@ -22,6 +22,8 @@ function isValidEmail(value: string) {
 function isValidPhone(value: string) {
   return value.replace(/\D/g, "").length >= 9;
 }
+
+const TAB_IDS: Mode[] = ["email", "otp"];
 
 function LoginPageContent() {
   const router = useRouter();
@@ -74,6 +76,39 @@ function LoginPageContent() {
     setFieldErrors((current) => ({ ...current, [field]: nextErrors[field] }));
     if (value && banner) setBanner("");
   }
+
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      // Derive current index from the actually-focused element, not state
+      const focusedIndex = tabRefs.current.findIndex(
+        (ref) => ref === event.currentTarget
+      );
+      const currentIndex = focusedIndex >= 0 ? focusedIndex : TAB_IDS.indexOf(mode);
+      let nextIndex: number | null = null;
+
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        nextIndex = (currentIndex + 1) % TAB_IDS.length;
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        nextIndex = (currentIndex - 1 + TAB_IDS.length) % TAB_IDS.length;
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        nextIndex = 0;
+      } else if (event.key === "End") {
+        event.preventDefault();
+        nextIndex = TAB_IDS.length - 1;
+      }
+
+      if (nextIndex !== null) {
+        resetMode(TAB_IDS[nextIndex]);
+        tabRefs.current[nextIndex]?.focus();
+      }
+    },
+    [mode],
+  );
 
   function resetMode(nextMode: Mode) {
     setMode(nextMode);
@@ -239,6 +274,7 @@ function LoginPageContent() {
           <div className="mt-8 rounded-2xl bg-emerald-950/5 p-1" role="tablist" aria-label="Metodi di accesso">
             <div className="grid grid-cols-2 gap-2">
               <button
+                ref={(el) => { tabRefs.current[0] = el; }}
                 id="login-tab-email"
                 role="tab"
                 type="button"
@@ -250,11 +286,13 @@ function LoginPageContent() {
                   mode === "email" ? "bg-white text-emerald-950 shadow-sm" : "text-emerald-950/60 hover:text-emerald-950"
                 )}
                 onClick={() => resetMode("email")}
+                onKeyDown={handleTabKeyDown}
               >
                 <Mail className="mb-0.5 mr-1.5 inline h-4 w-4" aria-hidden="true" />
                 Email
               </button>
               <button
+                ref={(el) => { tabRefs.current[1] = el; }}
                 id="login-tab-otp"
                 role="tab"
                 type="button"
@@ -266,6 +304,7 @@ function LoginPageContent() {
                   mode === "otp" ? "bg-white text-emerald-950 shadow-sm" : "text-emerald-950/60 hover:text-emerald-950"
                 )}
                 onClick={() => resetMode("otp")}
+                onKeyDown={handleTabKeyDown}
               >
                 <Phone className="mb-0.5 mr-1.5 inline h-4 w-4" aria-hidden="true" />
                 Telefono (OTP)
