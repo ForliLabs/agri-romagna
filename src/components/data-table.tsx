@@ -290,7 +290,7 @@ function MobileCard<T extends Record<string, unknown>>({
         className="flex w-full items-start justify-between gap-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
-        aria-controls={detailId}
+        aria-controls={expanded ? detailId : undefined}
       >
         <div className="min-w-0 flex-1 space-y-1">
           {primaryColumns.map((col) => (

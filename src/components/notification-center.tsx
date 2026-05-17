@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trapFocus } from "@/lib/focus-management";
+import { trapFocus, focusFirstElement } from "@/lib/focus-management";
 import type { AlertCategory, NotificationLog } from "@/lib/notification-service";
 
 const categoryIcons: Record<AlertCategory, React.ElementType> = {
@@ -70,6 +70,9 @@ export function NotificationCenter({
 
   useEffect(() => {
     if (!open) return;
+
+    // Focus the first focusable element inside the panel when it opens
+    requestAnimationFrame(() => focusFirstElement(panelRef.current));
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -127,7 +130,6 @@ export function NotificationCenter({
         <div
           ref={panelRef}
           role="dialog"
-          aria-modal="false"
           aria-label="Centro notifiche"
           className="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-2xl shadow-emerald-950/15 animate-in-slide-down dark:border-emerald-50/10 dark:bg-[#162b1e] dark:shadow-black/30 sm:w-96"
         >

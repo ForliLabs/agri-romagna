@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Search, ArrowRight, CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKeyboardShortcut } from "@/components/keyboard-shortcuts-help";
+import { trapFocus } from "@/lib/focus-management";
 
 export interface CommandPaletteItem {
   id: string;
@@ -186,6 +187,14 @@ export function CommandPalette({ items }: CommandPaletteProps) {
         case "Escape":
           event.preventDefault();
           closePalette();
+          break;
+        case "Tab":
+          // Trap focus within the command palette dialog
+          if ("nativeEvent" in event) {
+            trapFocus(event.nativeEvent, dialogRef.current);
+          } else {
+            trapFocus(event, dialogRef.current);
+          }
           break;
       }
     },

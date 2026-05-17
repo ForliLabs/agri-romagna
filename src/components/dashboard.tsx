@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { type ReactNode, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState, useCallback, useId } from "react";
 import { CloudSun, Home, Menu, Search, Tractor, Trees, User, X } from "lucide-react";
 import { trapFocus } from "@/lib/focus-management";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -159,6 +159,9 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
     }, {});
   }, [items, query]);
 
+  const filteredCount = useMemo(() => Object.values(filteredGroups).reduce((sum, arr) => sum + arr.length, 0), [filteredGroups]);
+  const searchAnnouncementId = useId();
+
   const primaryItems = useMemo(() => items.filter((item) => item.priority).slice(0, 6), [items]);
 
   useEffect(() => {
@@ -191,8 +194,12 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Cerca moduli, flussi, analytics…"
+        aria-describedby={searchAnnouncementId}
         className="w-full rounded-2xl border border-emerald-50/10 bg-emerald-50/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-emerald-100/55"
       />
+      <div id={searchAnnouncementId} className="sr-only" aria-live="polite" aria-atomic="true">
+        {query.trim() ? (filteredCount === 0 ? "Nessun modulo trovato" : `${filteredCount} moduli trovati`) : ""}
+      </div>
     </label>
   );
 
@@ -303,9 +310,10 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
 
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setMobileMenuOpen(false); mobileTriggerRef.current?.focus(); }} />
           <aside
             ref={mobileDrawerRef}
+            id="mobile-dashboard-menu-dialog"
             className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col overflow-y-auto bg-[#193524] text-emerald-50 shadow-xl"
             role="dialog"
             aria-modal="true"
@@ -355,7 +363,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
               className="rounded-full border border-emerald-950/10 p-2 text-emerald-950 hover:bg-emerald-100"
               aria-label="Apri menu"
               aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-dashboard-menu-title"
+              aria-controls="mobile-dashboard-menu-dialog"
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
