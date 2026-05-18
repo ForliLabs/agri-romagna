@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Users,
   Shield,
@@ -5,6 +7,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
+import { DataTable, type Column } from "@/components/data-table";
+import { EmptyState } from "@/components/ui/states";
 import {
   getWorkers,
   getWorkerDocuments,
@@ -41,6 +45,97 @@ const shiftStatusClasses: Record<string, string> = {
   assente: "bg-rose-100 text-rose-800",
 };
 
+type WorkerRow = {
+  id: string;
+  fullName: string;
+  role: string;
+  nationality: string;
+  preferredLanguage: string;
+  status: string;
+  hours: string;
+  [key: string]: unknown;
+};
+
+const workerColumns: Column<WorkerRow>[] = [
+  { key: "fullName", header: "Lavoratore", sortable: true, primary: true },
+  { key: "role", header: "Ruolo", sortable: true },
+  { key: "nationality", header: "Nazionalità", sortable: true },
+  { key: "preferredLanguage", header: "Lingua", hideOnMobile: true },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses[row.status] ?? ""}`}>
+        {row.status}
+      </span>
+    ),
+  },
+  { key: "hours", header: "Ore stagione", hideOnMobile: true },
+];
+
+type ShiftRow = {
+  id: string;
+  workerName: string;
+  fieldId: string;
+  schedule: string;
+  hours: string;
+  breakMinutes: number;
+  taskDescription: string;
+  status: string;
+  [key: string]: unknown;
+};
+
+const shiftColumns: Column<ShiftRow>[] = [
+  { key: "workerName", header: "Lavoratore", sortable: true, primary: true },
+  { key: "fieldId", header: "Campo" },
+  { key: "schedule", header: "Orario" },
+  { key: "hours", header: "Ore", hideOnMobile: true },
+  {
+    key: "breakMinutes",
+    header: "Pausa",
+    hideOnMobile: true,
+    render: (row) => <>{row.breakMinutes} min</>,
+  },
+  { key: "taskDescription", header: "Attività", hideOnMobile: true },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${shiftStatusClasses[row.status] ?? ""}`}>
+        {row.status}
+      </span>
+    ),
+  },
+];
+
+type CertRow = {
+  id: string;
+  workerName: string;
+  certLabel: string;
+  provider: string;
+  issuedDate: string;
+  expiryDate: string;
+  status: string;
+  [key: string]: unknown;
+};
+
+const certColumns: Column<CertRow>[] = [
+  { key: "workerName", header: "Lavoratore", sortable: true, primary: true },
+  { key: "certLabel", header: "Certificazione", sortable: true },
+  { key: "provider", header: "Ente", hideOnMobile: true },
+  { key: "issuedDate", header: "Rilascio", hideOnMobile: true },
+  { key: "expiryDate", header: "Scadenza" },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${docStatusClasses[row.status] ?? ""}`}>
+        {row.status}
+      </span>
+    ),
+  },
+];
+
 export default function WorkforcePage() {
   return (
     <div className="space-y-8">
@@ -65,50 +160,47 @@ export default function WorkforcePage() {
 
       {/* Worker Registry */}
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
-          <div className="flex items-center gap-3">
+        <article>
+          <div className="flex items-center gap-3 mb-6">
             <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
-              <Users className="h-6 w-6" />
+              <Users className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Anagrafica lavoratori</h2>
               <p className="text-sm text-emerald-950/65">Registro completo con status documenti e certificazioni</p>
             </div>
           </div>
-          <div className="mt-6 overflow-x-auto rounded-2xl border border-emerald-950/10 bg-[#f7f4ec]">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-emerald-950/10 text-left text-emerald-950/60">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Lavoratore</th>
-                  <th className="px-4 py-3 font-medium">Ruolo</th>
-                  <th className="px-4 py-3 font-medium">Nazionalità</th>
-                  <th className="px-4 py-3 font-medium">Lingua</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Ore stagione</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workers.map((worker) => (
-                  <tr key={worker.id} className="border-b border-emerald-950/5 last:border-b-0">
-                    <td className="px-4 py-3 font-semibold text-emerald-950">{worker.firstName} {worker.lastName}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{worker.role}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{worker.nationality}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{worker.preferredLanguage}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses[worker.status]}`}>{worker.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-emerald-950/75">{worker.hoursWorkedSeason}h (+{worker.overtimeHoursSeason}h str.)</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {workers.length === 0 ? (
+            <EmptyState
+              title="Nessun lavoratore registrato"
+              description="Aggiungi il primo lavoratore per iniziare a gestire la forza lavoro."
+              icon={<Users className="h-7 w-7" aria-hidden="true" />}
+            />
+          ) : (
+            <DataTable<WorkerRow>
+              columns={workerColumns}
+              data={workers.map((w) => ({
+                id: w.id,
+                fullName: `${w.firstName} ${w.lastName}`,
+                role: w.role,
+                nationality: w.nationality,
+                preferredLanguage: w.preferredLanguage,
+                status: w.status,
+                hours: `${w.hoursWorkedSeason}h (+${w.overtimeHoursSeason}h str.)`,
+              }))}
+              keyField="id"
+              searchable
+              searchPlaceholder="Cerca lavoratore, ruolo…"
+              caption="Anagrafica lavoratori con ruolo, nazionalità e stato"
+              emptyMessage="Nessun lavoratore corrisponde alla ricerca."
+            />
+          )}
         </article>
 
         <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
-              <AlertTriangle className="h-6 w-6" />
+              <AlertTriangle className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Documenti & scadenze</h2>
@@ -154,92 +246,86 @@ export default function WorkforcePage() {
       </section>
 
       {/* Today's Shifts */}
-      <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
-        <div className="flex items-center gap-3">
+      <article>
+        <div className="flex items-center gap-3 mb-6">
           <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
-            <Calendar className="h-6 w-6" />
+            <Calendar className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-emerald-950">Turni di oggi — 15 luglio 2025</h2>
             <p className="text-sm text-emerald-950/65">Pianificazione e tracciamento ore con conformità CCNL</p>
           </div>
         </div>
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-emerald-950/10 bg-[#f7f4ec]">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-emerald-950/10 text-left text-emerald-950/60">
-              <tr>
-                <th className="px-4 py-3 font-medium">Lavoratore</th>
-                <th className="px-4 py-3 font-medium">Campo</th>
-                <th className="px-4 py-3 font-medium">Orario</th>
-                <th className="px-4 py-3 font-medium">Ore</th>
-                <th className="px-4 py-3 font-medium">Pausa</th>
-                <th className="px-4 py-3 font-medium">Attività</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todayShifts.map((shift) => {
-                const worker = workers.find((w) => w.id === shift.workerId);
-                return (
-                  <tr key={shift.id} className="border-b border-emerald-950/5 last:border-b-0">
-                    <td className="px-4 py-3 font-semibold text-emerald-950">{worker ? `${worker.firstName} ${worker.lastName}` : shift.workerId}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{shift.fieldId}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{shift.startTime}–{shift.endTime}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{shift.hoursWorked}h{shift.overtimeHours > 0 ? ` (+${shift.overtimeHours}h str.)` : ""}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{shift.breakMinutes} min</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{shift.taskDescription}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${shiftStatusClasses[shift.status]}`}>{shift.status}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {todayShifts.length === 0 ? (
+          <EmptyState
+            title="Nessun turno programmato"
+            description="I turni programmati per oggi appariranno qui."
+            icon={<Calendar className="h-7 w-7" aria-hidden="true" />}
+          />
+        ) : (
+          <DataTable<ShiftRow>
+            columns={shiftColumns}
+            data={todayShifts.map((shift) => {
+              const worker = workers.find((w) => w.id === shift.workerId);
+              return {
+                id: shift.id,
+                workerName: worker ? `${worker.firstName} ${worker.lastName}` : shift.workerId,
+                fieldId: shift.fieldId,
+                schedule: `${shift.startTime}–${shift.endTime}`,
+                hours: `${shift.hoursWorked}h${shift.overtimeHours > 0 ? ` (+${shift.overtimeHours}h str.)` : ""}`,
+                breakMinutes: shift.breakMinutes,
+                taskDescription: shift.taskDescription,
+                status: shift.status,
+              };
+            })}
+            keyField="id"
+            caption="Turni di oggi con orario, ore, pausa e stato"
+            emptyMessage="Nessun turno corrisponde alla ricerca."
+          />
+        )}
       </article>
 
       {/* Safety Certifications */}
-      <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
-        <div className="flex items-center gap-3">
+      <article>
+        <div className="flex items-center gap-3 mb-6">
           <div className="rounded-2xl bg-violet-100 p-3 text-violet-700">
-            <Shield className="h-6 w-6" />
+            <Shield className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-emerald-950">Certificazioni sicurezza</h2>
             <p className="text-sm text-emerald-950/65">Registro D.Lgs 81/2008 — corsi e abilitazioni</p>
           </div>
         </div>
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-emerald-950/10 bg-[#f7f4ec]">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-emerald-950/10 text-left text-emerald-950/60">
-              <tr>
-                <th className="px-4 py-3 font-medium">Lavoratore</th>
-                <th className="px-4 py-3 font-medium">Certificazione</th>
-                <th className="px-4 py-3 font-medium">Ente</th>
-                <th className="px-4 py-3 font-medium">Rilascio</th>
-                <th className="px-4 py-3 font-medium">Scadenza</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workers.flatMap((w) =>
-                getWorkerCertifications(w.id).map((cert) => (
-                  <tr key={cert.id} className="border-b border-emerald-950/5 last:border-b-0">
-                    <td className="px-4 py-3 font-semibold text-emerald-950">{w.firstName} {w.lastName}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{getCertificationLabel(cert.type)}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{cert.provider}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{cert.issuedDate}</td>
-                    <td className="px-4 py-3 text-emerald-950/75">{cert.expiryDate}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${docStatusClasses[cert.status]}`}>{cert.status}</span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {(() => {
+          const certData: CertRow[] = workers.flatMap((w) =>
+            getWorkerCertifications(w.id).map((cert) => ({
+              id: cert.id,
+              workerName: `${w.firstName} ${w.lastName}`,
+              certLabel: getCertificationLabel(cert.type),
+              provider: cert.provider,
+              issuedDate: cert.issuedDate,
+              expiryDate: cert.expiryDate,
+              status: cert.status,
+            }))
+          );
+          return certData.length === 0 ? (
+            <EmptyState
+              title="Nessuna certificazione"
+              description="Le certificazioni di sicurezza appariranno qui."
+              icon={<Shield className="h-7 w-7" aria-hidden="true" />}
+            />
+          ) : (
+            <DataTable<CertRow>
+              columns={certColumns}
+              data={certData}
+              keyField="id"
+              searchable
+              searchPlaceholder="Cerca lavoratore, certificazione…"
+              caption="Certificazioni sicurezza con ente, date e stato"
+              emptyMessage="Nessuna certificazione corrisponde alla ricerca."
+            />
+          );
+        })()}
       </article>
     </div>
   );
