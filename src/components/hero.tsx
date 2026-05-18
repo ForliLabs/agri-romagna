@@ -25,16 +25,17 @@ export function Hero({
   return (
     <section
       className={cn(
-        "relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-20 sm:py-28 lg:py-32",
+        "relative overflow-hidden bg-gradient-to-br from-emerald-950 via-green-900 to-lime-700 py-20 text-white sm:py-28 lg:py-32",
         className
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(244,206,138,0.16),transparent_24%)]" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
             {title}
           </h1>
-          <p className="mt-6 text-lg leading-8 text-gray-600 sm:text-xl">
+          <p className="mt-6 text-lg leading-8 text-emerald-50/85 sm:text-xl">
             {subtitle}
           </p>
           {(ctaLabel || secondaryLabel) && (
@@ -42,7 +43,7 @@ export function Hero({
               {ctaLabel && ctaHref && (
                 <a
                   href={ctaHref}
-                  className="rounded-xl bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  className="rounded-full bg-[#f4f1e8] px-8 py-3.5 text-base font-semibold text-emerald-950 shadow-sm transition-transform hover:-translate-y-0.5"
                 >
                   {ctaLabel}
                 </a>
@@ -50,7 +51,7 @@ export function Hero({
               {secondaryLabel && secondaryHref && (
                 <a
                   href={secondaryHref}
-                  className="rounded-xl border border-gray-300 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="rounded-full border border-white/25 px-8 py-3.5 text-base font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/10"
                 >
                   {secondaryLabel}
                 </a>
