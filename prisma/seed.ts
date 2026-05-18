@@ -1,15 +1,109 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
 import { PrismaClient } from "../src/generated/prisma";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? "file:./dev.db",
-});
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./dev.db" });
 const prisma = new PrismaClient({ adapter });
+const now = new Date();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-const date = (value: string) => new Date(value);
+const daysAgo = (days: number, hour = 9, minute = 0) => {
+  const value = new Date(now.getTime() - days * DAY_MS);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+};
+
+const daysFromNow = (days: number, hour = 9, minute = 0) => {
+  const value = new Date(now.getTime() + days * DAY_MS);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+};
+
+const monthPoint = (monthsAgo: number, day = 6, hour = 10) =>
+  new Date(now.getFullYear(), now.getMonth() - monthsAgo, day, hour, 0, 0, 0);
+
+const round = (value: number, decimals = 1) => Math.round(value * 10 ** decimals) / 10 ** decimals;
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const pick = <T,>(values: readonly T[], index: number) => values[index % values.length]!;
+
+type CropType = "vite" | "grano" | "girasole" | "olivo" | "pomodoro" | "erba_medica" | "mais" | "pesco";
+
+type SeedData = {
+  cooperatives: Array<{
+    id: string;
+    name: string;
+    region: string;
+    province: string;
+    plan: string;
+    memberCount: number;
+    adminUserId: string;
+  }>;
+  farms: Array<{
+    id: string;
+    cooperativeId: string;
+    name: string;
+    location: string;
+    province: string;
+    hectares: number;
+    specialty: string;
+  }>;
+  fields: Array<{
+    id: string;
+    farmId: string;
+    cooperativeId: string;
+    name: string;
+    crop: string;
+    cropType: CropType;
+    variety: string;
+    municipality: string;
+    areaHa: number;
+    status: string;
+    health: string;
+    irrigation: string;
+    notes: string;
+    organic: boolean;
+    certifications: string[];
+    plantingDaysAgo: number;
+    harvestInDays: number;
+    expectedVolume: number;
+  }>;
+  users: Array<{
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    cooperativeId?: string;
+    farmId?: string;
+    phone: string;
+    avatarInitials: string;
+  }>;
+};
+
+const dataPath = path.join(process.cwd(), "prisma/seed-data/demo.json");
+const seedData = JSON.parse(readFileSync(dataPath, "utf8")) as SeedData;
+
+const cooperativeSeeds = seedData.cooperatives;
+const farmSeeds = seedData.farms;
+const userSeeds = seedData.users.map((user) => ({ ...user, passwordHash: "demo-password-hash" }));
+const fieldSeeds = seedData.fields.map((field) => ({
+  ...field,
+  plantingDate: daysAgo(field.plantingDaysAgo, 8),
+  expectedHarvest: daysFromNow(field.harvestInDays, field.cropType === "grano" ? 8 : 6),
+}));
+
+const farmsById = new Map(farmSeeds.map((farm) => [farm.id, farm]));
+const fieldsByFarmId = Object.fromEntries(farmSeeds.map((farm) => [farm.id, fieldSeeds.filter((field) => field.farmId === farm.id)]));
 
 async function clearDatabase() {
+  try {
+    await prisma.cooperative.updateMany({ data: { adminUserId: null } });
+  } catch {
+    // Empty database on first run.
+  }
+
   await prisma.message.deleteMany();
   await prisma.communicationChannel.deleteMany();
   await prisma.order.deleteMany();
@@ -42,1134 +136,711 @@ async function clearDatabase() {
   await prisma.regulatoryUpdate.deleteMany();
   await prisma.simulationScenario.deleteMany();
   await prisma.insurancePolicy.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.field.deleteMany();
   await prisma.farm.deleteMany();
   await prisma.cooperative.deleteMany();
-  await prisma.user.deleteMany();
 }
+
+function buildCompliance() {
+  const records: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
+
+  fieldSeeds.forEach((field, index) => {
+    const operator = pick(["Lucia Giorgi", "Sara Monti", "Anna Bassi", "Elena Bellini"], index);
+
+    if (field.organic) {
+      const recordId = `organic-${field.id}`;
+      records.push({
+        id: recordId,
+        fieldId: field.id,
+        type: "organic",
+        status: index % 5 === 0 ? "in_rinnovo" : "attiva",
+        title: `Certificazione biologica ${field.name}`,
+        description: `Registro e input conformi al Reg. UE 2018/848 per ${field.crop.toLowerCase()}.`,
+        dueDate: daysFromNow(40 + index),
+        completedDate: daysAgo(120 - index),
+        documents: [{ name: `registro-${field.id}.pdf` }, { name: `audit-${field.id}.pdf` }],
+        agencyRef: `BIO-${field.id.toUpperCase()}`,
+      });
+      events.push(
+        {
+          id: `${recordId}-audit`,
+          recordId,
+          fieldId: field.id,
+          type: "audit",
+          date: daysAgo(55 + index),
+          description: "Audit annuale e verifica quaderno di campagna.",
+          operator,
+          notes: "Nessuna non conformità rilevata.",
+          verified: true,
+        },
+        {
+          id: `${recordId}-upload`,
+          recordId,
+          fieldId: field.id,
+          type: "document_upload",
+          date: daysAgo(18 + index),
+          description: "Aggiornata documentazione di superfici e input.",
+          operator,
+          notes: "Documentazione condivisa con l'ente certificatore.",
+          verified: true,
+        },
+      );
+    }
+
+    const originTitle =
+      field.cropType === "vite"
+        ? `DOP ${field.variety} Romagna`
+        : field.cropType === "olivo"
+          ? "DOP Brisighella"
+          : field.cropType === "pesco"
+            ? "IGP Pesca e Nettarina di Romagna"
+            : null;
+
+    if (originTitle) {
+      const recordId = `origin-${field.id}`;
+      records.push({
+        id: recordId,
+        fieldId: field.id,
+        type: originTitle.startsWith("IGP") ? "IGP" : "DOP",
+        status: "attiva",
+        title: originTitle,
+        description: `Tracciabilità e disciplinare di origine mantenuti per ${field.name}.`,
+        dueDate: daysFromNow(50 + index),
+        completedDate: daysAgo(70 - (index % 12)),
+        documents: [{ name: `disciplinare-${field.id}.pdf` }, { name: `mappa-${field.id}.geojson` }],
+        agencyRef: `ORI-${field.id.toUpperCase()}`,
+      });
+      events.push(
+        {
+          id: `${recordId}-check`,
+          recordId,
+          fieldId: field.id,
+          type: "inspection",
+          date: daysAgo(40 + index),
+          description: "Verifica disciplinare, superfici e mappa catastale.",
+          operator,
+          notes: "Controllo superato.",
+          verified: true,
+        },
+        {
+          id: `${recordId}-sampling`,
+          recordId,
+          fieldId: field.id,
+          type: "sampling",
+          date: daysAgo(8 + index),
+          description: "Campionamento pre-raccolta e conferma destinazione di filiera.",
+          operator,
+          notes: "Parametri coerenti con il disciplinare di origine.",
+          verified: true,
+        },
+      );
+    }
+
+    if (["pomodoro", "grano"].includes(field.cropType) && !field.organic) {
+      const recordId = `filiera-${field.id}`;
+      records.push({
+        id: recordId,
+        fieldId: field.id,
+        type: "filiera",
+        status: "attiva",
+        title: `Controllo di filiera ${field.crop}`,
+        description: `Piano di tracciabilità e controlli residui per ${field.crop.toLowerCase()}.`,
+        dueDate: daysFromNow(30 + index),
+        completedDate: daysAgo(15 + index),
+        documents: [{ name: `contratto-${field.id}.pdf` }],
+        agencyRef: `FIL-${field.id.toUpperCase()}`,
+      });
+      events.push({
+        id: `${recordId}-residui`,
+        recordId,
+        fieldId: field.id,
+        type: "residue_check",
+        date: daysAgo(5 + index),
+        description: "Aggiornato piano residui e calendario conferimenti.",
+        operator,
+        notes: "I residui attesi restano sotto le soglie interne.",
+        verified: true,
+      });
+    }
+  });
+
+  return { records, events };
+}
+
+function buildLots() {
+  const selected = fieldSeeds.filter((field) => ["vite", "pesco", "olivo", "pomodoro", "grano"].includes(field.cropType));
+  const lots = selected.map((field, index) => {
+    const harvestDate = daysAgo(8 + index * 4, 6 + (index % 3));
+    return {
+      id: `lot-${field.id}`,
+      product:
+        field.cropType === "vite"
+          ? "Uva"
+          : field.cropType === "olivo"
+            ? "Olive"
+            : field.cropType === "pesco"
+              ? "Pesche"
+              : field.cropType === "pomodoro"
+                ? "Pomodoro"
+                : "Grano",
+      variety: field.variety,
+      harvestDate,
+      fieldId: field.id,
+      quantity: round(field.expectedVolume * (field.cropType === "vite" ? 930 : field.cropType === "olivo" ? 720 : 1000), 0),
+      unit: "kg",
+      status: pick(["stored", "packed", "quality_checked", "in_transit"], index),
+      certifications: field.certifications,
+    };
+  });
+
+  const traceabilityEvents = lots.flatMap((lot, index) => {
+    const field = fieldSeeds.find((item) => item.id === lot.fieldId)!;
+    const farm = farmsById.get(field.farmId)!;
+    return [
+      {
+        id: `trace-harvest-${lot.id}`,
+        lotId: lot.id,
+        type: "harvested",
+        timestamp: lot.harvestDate,
+        location: `${field.name}, ${field.municipality}`,
+        operator: pick(["Marco Tondini", "Sara Monti", "Anna Bassi", "Lucia Giorgi"], index),
+        details: `Raccolta completata in ${field.name}.`,
+        verified: true,
+      },
+      {
+        id: `trace-weight-${lot.id}`,
+        lotId: lot.id,
+        type: "weighed",
+        timestamp: new Date(lot.harvestDate.getTime() + 2 * 60 * 60 * 1000),
+        location: `${farm.name} · pesa aziendale`,
+        operator: "Centro conferimento cooperativo",
+        details: `Peso netto registrato ${lot.quantity} kg.`,
+        verified: true,
+      },
+      {
+        id: `trace-quality-${lot.id}`,
+        lotId: lot.id,
+        type: "quality_checked",
+        timestamp: new Date(lot.harvestDate.getTime() + 7 * 60 * 60 * 1000),
+        location: field.cropType === "vite" ? "Cantina sociale" : field.cropType === "olivo" ? "Frantoio partner" : "Hub ortofrutta cooperativo",
+        operator: "Ufficio qualità cooperativa",
+        details: `Campione allineato alla certificazione ${field.certifications[0] ?? "di filiera"}.`,
+        verified: true,
+      },
+      {
+        id: `trace-ship-${lot.id}`,
+        lotId: lot.id,
+        type: "shipped",
+        timestamp: new Date(lot.harvestDate.getTime() + 12 * 60 * 60 * 1000),
+        location: farm.location,
+        operator: "Logistica Romagna Fresh",
+        details: "Spedizione avviata con tracking logistico.",
+        verified: index % 5 !== 0,
+      },
+    ];
+  });
+
+  const supplyChainLots = lots.map((lot, index) => {
+    const field = fieldSeeds.find((item) => item.id === lot.fieldId)!;
+    return {
+      id: `supply-${lot.id}`,
+      product: `${lot.product} ${lot.variety}`,
+      origin: field.municipality,
+      destination:
+        field.cropType === "vite"
+          ? "Cantina sociale di Forlì"
+          : field.cropType === "olivo"
+            ? "Frantoio Brisighella"
+            : field.cropType === "pomodoro"
+              ? "Stabilimento di trasformazione Lugo"
+              : field.cropType === "grano"
+                ? "Molino artigianale Forlimpopoli"
+                : "Piattaforma fresco Cesena",
+      status: pick(["listed", "quality_checked", "routed", "received"], index),
+      quantity: lot.quantity,
+      departureDate: new Date(lot.harvestDate.getTime() + 10 * 60 * 60 * 1000),
+      arrivalDate: new Date(lot.harvestDate.getTime() + 15 * 60 * 60 * 1000),
+    };
+  });
+
+  return { lots, traceabilityEvents, supplyChainLots };
+}
+
+const sensorBase = (field: (typeof fieldSeeds)[number], type: string) => {
+  if (type === "soil_moisture") return field.cropType === "pomodoro" ? 28 : field.cropType === "vite" ? 22 : field.cropType === "olivo" ? 19 : 24;
+  if (type === "temperature") return field.cropType === "pomodoro" ? 25 : field.cropType === "mais" ? 24 : 22;
+  if (type === "humidity") return field.cropType === "vite" ? 63 : field.cropType === "pomodoro" ? 68 : 60;
+  return field.municipality === "Ravenna" ? 14 : 8;
+};
+
+function buildSensors() {
+  const devices: Array<Record<string, unknown>> = [];
+  const readings: Array<Record<string, unknown>> = [];
+
+  fieldSeeds.forEach((field, fieldIndex) => {
+    const specs = [
+      { suffix: "soil", type: "soil_moisture", label: "Sonda umidità suolo", unit: "% VWC", create: true },
+      { suffix: "temp", type: "temperature", label: "Sensore temperatura aria", unit: "°C", create: true },
+      { suffix: "humidity", type: "humidity", label: "Sensore umidità aria", unit: "%", create: true },
+      { suffix: "wind", type: "wind", label: "Anemometro meteo", unit: "km/h", create: ["vite", "pomodoro", "mais", "girasole"].includes(field.cropType) || fieldIndex % 3 === 0 },
+    ];
+
+    specs.filter((spec) => spec.create).forEach((spec, specIndex) => {
+      const sensorId = `sensor-${field.id}-${spec.suffix}`;
+      devices.push({
+        id: sensorId,
+        name: `${spec.label} · ${field.name}`,
+        type: spec.type,
+        fieldId: field.id,
+        status: fieldIndex % 11 === 0 && spec.type === "wind" ? "maintenance" : "online",
+        lastReading: daysAgo(0, 6 + specIndex * 2 + (fieldIndex % 4), 30),
+        batteryLevel: 48 + ((fieldIndex * 9 + specIndex * 7) % 49),
+        firmware: `v${1 + (fieldIndex % 2)}.${2 + specIndex}.${fieldIndex % 10}`,
+      });
+
+      for (let readingIndex = 0; readingIndex < 4; readingIndex += 1) {
+        const raw =
+          spec.type === "soil_moisture"
+            ? sensorBase(field, spec.type) + fieldIndex * 0.35 + readingIndex * 0.6
+            : spec.type === "temperature"
+              ? sensorBase(field, spec.type) + (readingIndex - 1.5) * 1.4 + (fieldIndex % 3)
+              : spec.type === "humidity"
+                ? sensorBase(field, spec.type) + (2 - readingIndex) * 2.5 + (fieldIndex % 4)
+                : sensorBase(field, spec.type) + readingIndex * 1.7 + (fieldIndex % 5);
+
+        const value =
+          spec.type === "soil_moisture"
+            ? clamp(round(raw, 1), 14, 39)
+            : spec.type === "temperature"
+              ? clamp(round(raw, 1), 15, 34)
+              : spec.type === "humidity"
+                ? clamp(round(raw, 1), 42, 88)
+                : clamp(round(raw, 1), 2, 32);
+
+        readings.push({
+          id: `reading-${sensorId}-${readingIndex + 1}`,
+          sensorId,
+          timestamp: daysAgo(0, 2 + readingIndex * 4 + (fieldIndex % 2), 15),
+          value,
+          unit: spec.unit,
+          quality: value > 30 && spec.type === "temperature" ? "warning" : "good",
+        });
+      }
+    });
+  });
+
+  return { devices, readings };
+}
+
+function buildNdvi() {
+  return fieldSeeds.flatMap((field, index) => [0, 1, 2].map((step) => {
+    const base = field.cropType === "vite" ? 0.55 : field.cropType === "pomodoro" ? 0.58 : field.cropType === "olivo" ? 0.49 : field.cropType === "pesco" ? 0.63 : 0.52;
+    const ndviValue = clamp(round(base + step * 0.07 + (index % 5) * 0.02, 2), 0.32, 0.86);
+    return {
+      id: `ndvi-${field.id}-${step + 1}`,
+      fieldId: field.id,
+      date: daysAgo(95 - step * 38 - (index % 6), 10),
+      ndviValue,
+      healthStatus: ndviValue >= 0.72 ? "ottimo" : ndviValue >= 0.58 ? "buono" : "monitorare",
+      cloudCover: 6 + ((index * 4 + step * 7) % 22),
+      satellite: step % 2 === 0 ? "sentinel-2" : "landsat-9",
+    };
+  }));
+}
+
+function buildFinance() {
+  const costEntries: Array<Record<string, unknown>> = [];
+  const revenueEntries: Array<Record<string, unknown>> = [];
+  const carbonEntries: Array<Record<string, unknown>> = [];
+
+  farmSeeds.forEach((farm, farmIndex) => {
+    const mainField = fieldsByFarmId[farm.id]?.[0];
+    for (let month = 5; month >= 0; month -= 1) {
+      const monthDate = monthPoint(month, 7 + (farmIndex % 3), 10);
+      costEntries.push(
+        {
+          id: `cost-${farm.id}-${month}-inputs`,
+          farmId: farm.id,
+          category: "input",
+          description: `Input tecnici del mese per ${farm.name}.`,
+          amount: round(farm.hectares * 62 + farmIndex * 34 + month * 18, 2),
+          date: monthDate,
+          fieldId: mainField?.id,
+        },
+        {
+          id: `cost-${farm.id}-${month}-labour`,
+          farmId: farm.id,
+          category: "manodopera",
+          description: `Manodopera specializzata e operazioni meccaniche a ${farm.location}.`,
+          amount: round(farm.hectares * 48 + farmIndex * 21 + month * 11, 2),
+          date: new Date(monthDate.getTime() + 5 * DAY_MS),
+          fieldId: fieldsByFarmId[farm.id]?.[1]?.id,
+        },
+      );
+
+      revenueEntries.push({
+        id: `revenue-${farm.id}-${month}`,
+        farmId: farm.id,
+        source: pick(["cooperativa", "horeca", "marketplace"], farmIndex + month),
+        description: `Incasso mensile da conferimenti e vendita diretta per ${farm.name}.`,
+        amount: round(farm.hectares * 155 + farmIndex * 64 + (5 - month) * 88, 2),
+        date: new Date(monthDate.getTime() + 14 * DAY_MS),
+      });
+
+      if (month % 2 === 1) {
+        carbonEntries.push(
+          {
+            id: `carbon-${farm.id}-${month}-emission`,
+            farmId: farm.id,
+            type: "emission",
+            category: "diesel",
+            description: "Emissioni operative da meccanizzazione e logistica.",
+            co2Kg: round(farm.hectares * 18 + farmIndex * 12 + month * 9, 1),
+            date: new Date(monthDate.getTime() + 9 * DAY_MS),
+            fieldId: mainField?.id,
+            verified: true,
+          },
+          {
+            id: `carbon-${farm.id}-${month}-sequestration`,
+            farmId: farm.id,
+            type: "sequestration",
+            category: "cover_crop",
+            description: "Stima sequestro da inerbito, residui colturali e minime lavorazioni.",
+            co2Kg: round(-1 * (farm.hectares * 11 + farmIndex * 7 + month * 4), 1),
+            date: new Date(monthDate.getTime() + 12 * DAY_MS),
+            fieldId: fieldsByFarmId[farm.id]?.[2]?.id ?? mainField?.id,
+            verified: month !== 5,
+          },
+        );
+      }
+    }
+  });
+
+  return { costEntries, revenueEntries, carbonEntries };
+}
+
+function buildGovernance() {
+  const proposals = [
+    { id: "proposal-vigne-irrigation", cooperativeId: "coop-vigne-romagna", title: "Piano condiviso per irrigazione di precisione in collina", description: "Investimento congiunto in nuove centraline e dashboard unificata per le vigne di Bertinoro e Forlimpopoli.", status: "open", createdBy: "user-elena-bellini", createdAt: daysAgo(12, 9) },
+    { id: "proposal-vigne-hub", cooperativeId: "coop-vigne-romagna", title: "Hub logistico pesche premium per Cesena e Forlì", description: "Linea di confezionamento rapida per pesche e nettarine IGP con etichettatura dinamica.", status: "approved", createdBy: "user-marco-tondini", createdAt: daysAgo(34, 17) },
+    { id: "proposal-bio-carbon", cooperativeId: "coop-terre-faentine", title: "Credito carbonio cooperativo su rotazioni cerealicole", description: "Formalizzazione del progetto comune di carbon farming con misure MRV trimestrali.", status: "approved", createdBy: "user-giacomo-rossi", createdAt: daysAgo(28, 10) },
+    { id: "proposal-bio-storage", cooperativeId: "coop-terre-faentine", title: "Nuovo silo bio dedicato a Faenza", description: "Espansione della capacità di stoccaggio separato per cereali biologici e lotti certificati.", status: "open", createdBy: "user-sara-monti", createdAt: daysAgo(7, 18) },
+    { id: "proposal-orto-weather", cooperativeId: "coop-orto-adriatico", title: "Rete meteo condivisa per pomodoro e mais", description: "Installazione di nuove stazioni meteo collegate all'alerting fitosanitario cooperativo.", status: "approved", createdBy: "user-paolo-rinaldi", createdAt: daysAgo(19, 8) },
+    { id: "proposal-orto-cold-chain", cooperativeId: "coop-orto-adriatico", title: "Rafforzamento catena del freddo per consegne costiere", description: "Accordo quadro per due navette refrigerate nei picchi di raccolta orticola e marketplace.", status: "open", createdBy: "user-anna-bassi", createdAt: daysAgo(5, 11) },
+  ];
+
+  const votes = [
+    ["vote-1", "proposal-vigne-irrigation", "user-elena-bellini", "favor", daysAgo(11, 9, 15)],
+    ["vote-2", "proposal-vigne-irrigation", "user-marco-tondini", "favor", daysAgo(10, 14)],
+    ["vote-3", "proposal-vigne-irrigation", "user-lucia-giorgi", "favor", daysAgo(9, 8, 45)],
+    ["vote-4", "proposal-vigne-irrigation", "user-simone-verdi", "against", daysAgo(8, 12, 10)],
+    ["vote-5", "proposal-vigne-hub", "user-elena-bellini", "favor", daysAgo(31, 17, 10)],
+    ["vote-6", "proposal-vigne-hub", "user-marco-tondini", "favor", daysAgo(31, 18, 22)],
+    ["vote-7", "proposal-vigne-hub", "user-simone-verdi", "favor", daysAgo(30, 9, 4)],
+    ["vote-8", "proposal-bio-carbon", "user-giacomo-rossi", "favor", daysAgo(27, 9, 25)],
+    ["vote-9", "proposal-bio-carbon", "user-sara-monti", "favor", daysAgo(26, 16)],
+    ["vote-10", "proposal-bio-carbon", "user-marta-neri", "favor", daysAgo(25, 10, 30)],
+    ["vote-11", "proposal-bio-storage", "user-giacomo-rossi", "favor", daysAgo(6, 11)],
+    ["vote-12", "proposal-bio-storage", "user-sara-monti", "against", daysAgo(5, 14, 12)],
+    ["vote-13", "proposal-orto-weather", "user-paolo-rinaldi", "favor", daysAgo(18, 8, 30)],
+    ["vote-14", "proposal-orto-weather", "user-anna-bassi", "favor", daysAgo(18, 12)],
+    ["vote-15", "proposal-orto-weather", "user-lorenzo-ferri", "favor", daysAgo(17, 9, 50)],
+    ["vote-16", "proposal-orto-cold-chain", "user-paolo-rinaldi", "favor", daysAgo(4, 11, 15)],
+    ["vote-17", "proposal-orto-cold-chain", "user-anna-bassi", "favor", daysAgo(3, 15, 5)],
+    ["vote-18", "proposal-orto-cold-chain", "user-lorenzo-ferri", "against", daysAgo(2, 9, 40)],
+  ].map(([id, proposalId, userId, vote, timestamp]) => ({ id, proposalId, userId, vote, timestamp }));
+
+  return {
+    proposals: proposals.map((proposal) => ({
+      ...proposal,
+      votesFor: votes.filter((vote) => vote.proposalId === proposal.id && vote.vote === "favor").length,
+      votesAgainst: votes.filter((vote) => vote.proposalId === proposal.id && vote.vote === "against").length,
+    })),
+    votes,
+  };
+}
+
+function buildMarketplace() {
+  const products = [
+    ["market-oil-rio", "Olio EVO Brisighella DOP 0,5L", "olio", 14.5, "bottiglia", "farm-rio-del-solco", true],
+    ["market-pesche-tondini", "Pesche gialle IGP cassette 5 kg", "frutta fresca", 16.9, "cassetta", "farm-tondini", false],
+    ["market-nettarine-savio", "Nettarine bianche IGP 3 kg", "frutta fresca", 11.4, "cassetta", "farm-valle-savio", false],
+    ["market-uve-san-vittore", "Uva Sangiovese premium", "uva da vino", 0.98, "kg", "farm-san-vittore", false],
+    ["market-grano-ca-bianca", "Grano duro bio in big bag", "cereali", 0.56, "kg", "farm-ca-bianca", true],
+    ["market-medica-bidente", "Balle di erba medica bio", "foraggere", 89, "balla", "farm-fattoria-bidente", true],
+    ["market-pomodoro-santerno", "Pomodoro da salsa filiera Lugo", "orticole", 0.42, "kg", "farm-cascina-santerno", false],
+    ["market-pomodoro-pineta", "Pomodoro fresco costa romagnola", "orticole", 1.35, "kg", "farm-pineta-verde", false],
+    ["market-girasole-ca-bianca", "Seme di girasole alto oleico", "oleaginose", 0.73, "kg", "farm-ca-bianca", true],
+    ["market-olio-bidente", "Olio EVO collina Bidente 0,75L", "olio", 12.8, "bottiglia", "farm-fattoria-bidente", true],
+  ].map(([id, name, category, price, unit, farmId, organic]) => ({ id, name, category, price, unit, farmId, available: true, organic }));
+
+  const buyers = ["user-davide-costa", "user-chiara-romani", "user-superadmin", "user-simone-verdi", "user-lorenzo-ferri"];
+  const orders = Array.from({ length: 15 }, (_, index) => {
+    const product = products[index % products.length]!;
+    const quantity = round(product.unit === "kg" ? 180 + index * 15 : product.unit === "bottiglia" ? 12 + (index % 6) : 4 + (index % 3), 1);
+    return {
+      id: `order-market-${index + 1}`,
+      productId: product.id,
+      buyerId: buyers[index % buyers.length]!,
+      quantity,
+      totalPrice: round(quantity * product.price, 2),
+      status: pick(["confirmed", "processing", "shipped", "delivered"], index),
+      orderDate: daysAgo(22 - index, 10),
+    };
+  });
+
+  return { products, orders };
+}
+
+const esgIndicators = cooperativeSeeds.flatMap((cooperative, index) => [
+  { id: `esg-${cooperative.id}-renewable`, cooperativeId: cooperative.id, category: "environment", name: "Energia rinnovabile utilizzata", value: 34 + index * 11, unit: "%", period: "ultimi_6_mesi", target: 60 },
+  { id: `esg-${cooperative.id}-certified`, cooperativeId: cooperative.id, category: "compliance", name: "Superficie certificata bio/DOP/IGP", value: 61 + index * 8, unit: "%", period: "campagna_corrente", target: 75 },
+  { id: `esg-${cooperative.id}-water`, cooperativeId: cooperative.id, category: "resource_efficiency", name: "Efficienza irrigua", value: 2.8 + index * 0.3, unit: "kg/m3", period: "ultimi_6_mesi", target: 3.4 },
+  { id: `esg-${cooperative.id}-safety`, cooperativeId: cooperative.id, category: "social", name: "Ore formazione sicurezza", value: 14 + index * 3, unit: "ore", period: "anno_corrente", target: 18 },
+]);
+
+const harvestDeclarations = fieldSeeds.map((field, index) => ({
+  id: `harvest-${field.id}`,
+  fieldId: field.id,
+  estimatedDate: field.expectedHarvest,
+  estimatedKg: round(field.expectedVolume * 1000, 0),
+  actualKg: field.expectedHarvest.getTime() < now.getTime() ? round(field.expectedVolume * 970, 0) : undefined,
+  status: field.expectedHarvest.getTime() < now.getTime() ? "completed" : index % 4 === 0 ? "confirmed" : "planned",
+  quality: pick(["premium", "ottima", "commerciale_a"], index),
+  notes: `Piano di raccolta predisposto per ${field.name}.`,
+}));
+
+const irrigationSchedules = fieldSeeds
+  .filter((field) => !["grano", "girasole"].includes(field.cropType))
+  .map((field, index) => ({
+    id: `irrigation-${field.id}`,
+    fieldId: field.id,
+    method: field.irrigation,
+    startDate: daysFromNow((index % 6) + 1, 2 + (index % 3)),
+    endDate: daysFromNow((index % 6) + 1, 5 + (index % 3), 30),
+    waterMm: round(8 + (index % 5) * 1.8 + (field.cropType === "pomodoro" ? 4 : 0), 1),
+    status: index % 5 === 0 ? "in_progress" : "scheduled",
+    frequency: field.cropType === "pomodoro" ? "48h" : field.cropType === "vite" ? "72h" : "96h",
+  }));
+
+const soilAnalyses = fieldSeeds.map((field, index) => ({
+  id: `soil-${field.id}`,
+  fieldId: field.id,
+  date: daysAgo(25 + index, 9),
+  ph: round(6.3 + (index % 6) * 0.2, 1),
+  organicMatter: round(1.8 + (field.organic ? 0.8 : 0.2) + (index % 4) * 0.2, 1),
+  nitrogen: round(38 + (index % 5) * 5.5, 1),
+  phosphorus: round(24 + (index % 4) * 4.5, 1),
+  potassium: round(165 + (index % 6) * 18, 1),
+  texture: pick(["franco limoso", "franco argilloso", "franco sabbioso"], index),
+  notes: field.organic ? "Buona attività biologica e struttura stabile." : "Integrazione mirata prevista prima della prossima fase fenologica.",
+}));
+
+const diseaseRisks = [
+  ["risk-vite-peronospora", "Peronospora", "Vite", "medio-alto", "Forlì-Cesena", daysAgo(3, 7), ["Ripetere monitoraggio fogliare dopo il prossimo evento piovoso", "Mantenere chioma arieggiata nelle parcelle di fondovalle"]],
+  ["risk-vite-oidio", "Oidio", "Vite", "medio", "Ravenna", daysAgo(5, 8), ["Verificare grappoli su impianti più vigorosi", "Programmare trattamento solo dove il rischio supera la soglia aziendale"]],
+  ["risk-olivo-mosca", "Mosca olearia", "Olivo", "attenzione", "Brisighella", daysAgo(2, 9), ["Controllare trappole ogni 72 ore", "Mantenere copertura caolino nei lotti più esposti"]],
+  ["risk-pomodoro-tuta", "Tuta absoluta", "Pomodoro", "alto", "Lugo-Ravenna", daysAgo(1, 6), ["Rafforzare cattura massale", "Eseguire sopralluogo serale sui campi più chiusi"]],
+  ["risk-mais-piralide", "Piralide", "Mais", "medio", "Lugo", daysAgo(4, 8), ["Controllare prime ovature su bordure", "Confermare soglia con rilievo di campo entro 48 ore"]],
+  ["risk-pesco-monilia", "Monilia", "Pesco", "medio", "Cesena-Bertinoro", daysAgo(6, 9), ["Rimuovere frutti lesionati", "Aumentare ventilazione nelle file più fitte"]],
+  ["risk-grano-septoria", "Septoria", "Grano", "basso", "Faenza", daysAgo(8, 10), ["Monitoraggio passivo", "Valutare solo su appezzamenti tardivi"]],
+].map(([id, disease, crop, riskLevel, region, detectedDate, recommendations]) => ({ id, disease, crop, riskLevel, region, detectedDate, recommendations }));
+
+const sprayPrescriptions = [
+  ["field-vigna-collina-sud", "Rame metallo 20%", "2.8 kg/ha", "approved"],
+  ["field-vigna-argine-est", "Zolfo bagnabile micronizzato", "4 kg/ha", "approved"],
+  ["field-pesco-fratta", "Bacillus subtilis", "2.5 L/ha", "draft"],
+  ["field-pomodoro-malagola", "Bacillus thuringiensis", "1.2 kg/ha", "approved"],
+  ["field-pomodoro-santerno", "Trappole feromoniche aggiuntive", "20/ha", "approved"],
+  ["field-oliveto-rio", "Caolino micronizzato", "5 kg/ha", "planned"],
+  ["field-mais-santerno", "Trichogramma brassicae", "10 capsule/ha", "approved"],
+  ["field-olivo-bidente", "Caolino micronizzato", "4.5 kg/ha", "planned"],
+].map(([fieldId, product, dosage, status], index) => ({
+  id: `spray-${index + 1}`,
+  fieldId,
+  product,
+  dosage,
+  applicationDate: daysFromNow((index % 5) + 1, 6 + (index % 3)),
+  status,
+  operator: pick(["Lucia Giorgi", "Sara Monti", "Anna Bassi", "Marco Tondini"], index),
+  weatherOk: index % 3 !== 0,
+}));
+
+const equipment = farmSeeds.flatMap((farm, index) => [
+  { id: `equipment-${farm.id}-tractor`, name: `Trattore ${farm.location}`, type: "tractor", status: "operativo", farmId: farm.id, lastMaintenance: daysAgo(35 + index * 2, 8), nextMaintenance: daysFromNow(22 + index * 3, 8), hoursUsed: 620 + index * 74 },
+  { id: `equipment-${farm.id}-${index % 2 === 0 ? "atomizer" : "irrigation"}`, name: index % 2 === 0 ? `Atomizzatore ${farm.location}` : `Centralina irrigua ${farm.location}`, type: index % 2 === 0 ? "sprayer" : "irrigation_controller", status: index % 4 === 0 ? "attenzione" : "operativo", farmId: farm.id, lastMaintenance: daysAgo(18 + index * 3, 9), nextMaintenance: daysFromNow(18 + index * 4, 9), hoursUsed: 190 + index * 26 },
+]);
+
+const maintenanceEvents = equipment.map((item, index) => ({
+  id: `maintenance-${item.id}`,
+  equipmentId: item.id,
+  date: item.lastMaintenance ?? daysAgo(20),
+  type: item.type === "tractor" ? "tagliando" : "controllo funzionale",
+  description: item.type === "tractor" ? "Cambio filtri, verifica idraulica e check sicurezza." : "Taratura ugelli, test elettrovalvole e aggiornamento centralina.",
+  cost: round(220 + index * 18, 2),
+  technician: pick(["Officina Agrimec Faenza", "Service Romagna FieldTech", "Tecnico consortile"], index),
+}));
+
+const seasonalWorkers = [
+  ["worker-vigne-1", "Nicola Serra", "potatore specializzato", "coop-vigne-romagna", daysAgo(120, 7), daysFromNow(50, 18), "active", ["sicurezza_base", "lavori_in_quota"]],
+  ["worker-vigne-2", "Alessia Marini", "caposquadra raccolta", "coop-vigne-romagna", daysAgo(95, 7), daysFromNow(65, 18), "active", ["primo_soccorso", "uso_trattore"]],
+  ["worker-bio-1", "Youssef El Amrani", "operatore cerealicolo", "coop-terre-faentine", daysAgo(110, 7), daysFromNow(40, 18), "active", ["sicurezza_base"]],
+  ["worker-bio-2", "Marta Righi", "addetta qualità campi bio", "coop-terre-faentine", daysAgo(140, 7), daysFromNow(55, 18), "active", ["haccp", "audit_interno"]],
+  ["worker-orto-1", "Goran Petrovic", "operatore irrigazione", "coop-orto-adriatico", daysAgo(130, 7), daysFromNow(70, 18), "active", ["sicurezza_base", "spazi_confinati"]],
+  ["worker-orto-2", "Ilenia Casadei", "coordinatrice raccolta orticole", "coop-orto-adriatico", daysAgo(88, 7), daysFromNow(60, 18), "active", ["primo_soccorso", "carrelli_elevatori"]],
+].map(([id, name, role, cooperativeId, startDate, endDate, status, certifications]) => ({ id, name, role, cooperativeId, startDate, endDate, status, certifications }));
+
+const shiftFields = ["field-vigna-collina-sud", "field-pesco-fratta", "field-girasole-ca-bianca", "field-oliveto-rio", "field-pomodoro-santerno", "field-pomodoro-pineta"];
+const workShifts = seasonalWorkers.flatMap((worker, index) => [0, 1].map((step) => ({
+  id: `shift-${worker.id}-${step + 1}`,
+  workerId: worker.id,
+  date: daysAgo(6 - step, 6),
+  startTime: daysAgo(6 - step, 6, 30),
+  endTime: daysAgo(6 - step, 13 + step),
+  fieldId: shiftFields[(index + step) % shiftFields.length]!,
+  task: pick(["Monitoraggio fitosanitario e rilievo vigore", "Preparazione raccolta e controllo maturazione", "Manutenzione ali gocciolanti", "Verifica lotti pronti al conferimento"], index + step),
+  hoursWorked: 6.5 + step,
+})));
+
+const insurancePolicies = farmSeeds.map((farm, index) => ({
+  id: `insurance-${farm.id}`,
+  farmId: farm.id,
+  type: pick(["grandine", "multirischio", "parametrica_siccita"], index),
+  provider: pick(["Generali Italia", "UnipolSai Agro", "VH Italia Agrisafe"], index),
+  coverageAmount: round(85000 + farm.hectares * 2200, 2),
+  premium: round(3200 + farm.hectares * 74, 2),
+  startDate: monthPoint(5, 1, 0),
+  endDate: daysFromNow(170, 0),
+  status: index % 4 === 0 ? "quoted" : "active",
+}));
+
+const communicationChannels = cooperativeSeeds.flatMap((cooperative) => [
+  { id: `channel-${cooperative.id}-meteo`, name: `${cooperative.name} · Meteo e allerte`, type: "broadcast", cooperativeId: cooperative.id, memberCount: cooperative.memberCount },
+  { id: `channel-${cooperative.id}-assemblea`, name: `${cooperative.name} · Assemblea soci`, type: "discussion", cooperativeId: cooperative.id, memberCount: cooperative.memberCount },
+]);
+
+const messages = [
+  ["message-1", "channel-coop-vigne-romagna-meteo", "user-lucia-giorgi", "Previste raffiche fino a 28 km/h su Bertinoro dalle 17:00. Anticipare eventuali trattamenti sui vigneti esposti.", daysAgo(0, 7, 35), ["user-elena-bellini", "user-marco-tondini", "user-simone-verdi"]],
+  ["message-2", "channel-coop-vigne-romagna-assemblea", "user-elena-bellini", "Ordine del giorno confermato per lunedì: irrigazione di precisione, linea pesche premium e budget sensori 2025.", daysAgo(1, 18, 20), ["user-marco-tondini", "user-lucia-giorgi"]],
+  ["message-3", "channel-coop-terre-faentine-meteo", "user-giacomo-rossi", "Accumulo pioggia previsto 14 mm tra Faenza e Brisighella. Sospendere i turni irrigui sulle mediche per 48 ore.", daysAgo(0, 6, 50), ["user-sara-monti", "user-marta-neri"]],
+  ["message-4", "channel-coop-terre-faentine-assemblea", "user-sara-monti", "Caricata la proposta sul nuovo silo bio: allegato business case e confronto costi/benefici.", daysAgo(3, 13, 10), ["user-giacomo-rossi", "user-marta-neri"]],
+  ["message-5", "channel-coop-orto-adriatico-meteo", "user-paolo-rinaldi", "Allerta tuta absoluta alta su Lugo e Ravenna: verificare trappole e monitoraggi serali fino a venerdì.", daysAgo(0, 8, 5), ["user-anna-bassi", "user-lorenzo-ferri"]],
+  ["message-6", "channel-coop-orto-adriatico-assemblea", "user-anna-bassi", "Domani test nuova procedura cold-chain sulle consegne marketplace: partenza navetta alle 05:45 da Ravenna.", daysAgo(2, 17, 40), ["user-paolo-rinaldi", "user-lorenzo-ferri"]],
+].map(([id, channelId, senderId, content, timestamp, readBy]) => ({ id, channelId, senderId, content, timestamp, readBy }));
+
+const farmBenchmarks = farmSeeds.map((farm, index) => ({
+  id: `benchmark-${farm.id}`,
+  farmId: farm.id,
+  period: "ultimi_6_mesi",
+  yieldPerHa: round(5.6 + index * 0.45, 2),
+  costPerHa: round(1160 + index * 80, 2),
+  waterEfficiency: round(2.1 + (index % 4) * 0.35, 2),
+  carbonPerHa: round(182 - index * 9, 2),
+  overallScore: round(73 + index * 2.4, 1),
+}));
+
+const yieldPredictions = fieldSeeds.map((field, index) => ({
+  id: `prediction-${field.id}`,
+  fieldId: field.id,
+  crop: field.crop,
+  predictedYield: round(field.expectedVolume * (0.95 + (index % 4) * 0.03), 2),
+  confidenceLow: round(field.expectedVolume * 0.86, 2),
+  confidenceHigh: round(field.expectedVolume * 1.08, 2),
+  predictionDate: daysAgo(2 + (index % 4), 5),
+  factors: {
+    ndvi: round(0.52 + (index % 5) * 0.04, 2),
+    soilMoisture: sensorBase(field, "soil_moisture") + (index % 3),
+    rainfall7d: 4 + (index % 6) * 3,
+    degreeDays: 120 + index * 8,
+    pestPressure: pick(["bassa", "media", "monitorata"], index),
+  },
+}));
+
+const regulatoryUpdates = [
+  { id: "regulation-1", title: "Aggiornamento disciplinari SQNPI Emilia-Romagna", source: "Regione Emilia-Romagna", category: "disciplinari", publishDate: daysAgo(30, 9), effectiveDate: daysAgo(10, 0), summary: "Aggiornati i limiti di intervento su vite e pomodoro da industria con nuove soglie di monitoraggio.", impact: "Richiede riallineamento dei piani di campo e dei registri trattamenti.", url: "https://agricoltura.regione.emilia-romagna.it/disciplinari-sqnpi" },
+  { id: "regulation-2", title: "Nuovo bando investimenti irrigui 4.0", source: "PSR Emilia-Romagna", category: "finanziamenti", publishDate: daysAgo(18, 10), effectiveDate: daysAgo(5, 0), summary: "Contributi per sensori, elettrovalvole e piattaforme di monitoraggio dei consumi idrici.", impact: "Opportunità diretta per le tre cooperative e i piani di investimento 2025.", url: "https://agrea.regione.emilia-romagna.it/bandi/irrigazione-4-0" },
+  { id: "regulation-3", title: "Linee guida nazionali crediti carbonio in agricoltura", source: "Ministero dell'Agricoltura", category: "sostenibilita", publishDate: daysAgo(12, 11), effectiveDate: daysFromNow(15, 0), summary: "Definiti standard minimi di monitoraggio per pratiche conservative e sequestro in suolo.", impact: "Influenza i progetti carbon farming di Terre Faentine Bio.", url: "https://masaf.gov.it/carbon-farming-linee-guida" },
+];
+
+const simulationScenarios = [
+  { id: "scenario-vite-water", name: "Riduzione irrigua 15% su Vigna Collina Sud", fieldId: "field-vigna-collina-sud", type: "irrigation_optimization", parameters: { reductionPercent: 15, baselineMm: 42, horizonDays: 30 }, results: { predictedYieldDelta: -2.1, savingsM3: 184, qualityRisk: "basso" }, createdAt: daysAgo(4, 15), createdBy: "user-lucia-giorgi" },
+  { id: "scenario-pomodoro-heat", name: "Stress termico su Pomodoro Santerno Sud", fieldId: "field-pomodoro-santerno", type: "weather_event", parameters: { maxTemperature: 36, durationDays: 4, alertSource: "stazione_meteo" }, results: { yieldDelta: -6.4, irrigationBoostMm: 9, harvestAdvanceDays: 3 }, createdAt: daysAgo(3, 17), createdBy: "user-paolo-rinaldi" },
+  { id: "scenario-grano-carbon", name: "Scenario semina su sodo Grano Cà Bianca", fieldId: "field-grano-ca-bianca", type: "carbon_farming", parameters: { tillage: "no_till", residueRetention: true, horizonMonths: 6 }, results: { dieselReductionPercent: 18, co2KgDelta: -420, marginDelta: 740 }, createdAt: daysAgo(6, 11), createdBy: "user-sara-monti" },
+  { id: "scenario-pesco-logistics", name: "Raccolta anticipata Pesche San Mamante", fieldId: "field-pesco-san-mamante", type: "logistics", parameters: { harvestAdvanceDays: 2, destination: "hub_forli", packagingTeam: 2 }, results: { shelfLifeGainDays: 1.5, wasteReductionPercent: 8.2 }, createdAt: daysAgo(2, 14), createdBy: "user-marco-tondini" },
+];
 
 async function seed() {
   await clearDatabase();
 
-  const cooperativeId = "coop-romagna-unita";
-  const farmIds = {
-    tondini: "azienda-tondini",
-    sanVittore: "podere-san-vittore",
-    fratta: "tenuta-fratta",
-    caBianca: "azienda-ca-bianca",
-  };
-
-  const fieldIds = {
-    vignaCollinaSud: "vigna-collina-sud",
-    vignaArgineEst: "vigna-argine-est",
-    fruttetoSanMamante: "frutteto-san-mamante",
-    seminativoZampeschi: "seminativo-via-zampeschi",
-    vignaSanVittore: "vigna-san-vittore",
-    ulivetoRonco: "uliveto-ronco",
-    susinetoFratta: "susineto-la-fratta",
-    albicoccheFratta: "albicocche-colli-fratta",
-    medicaBianca: "medica-ovest-bianca",
-    granoBianca: "grano-nuovo-bianca",
-  };
-
-  await prisma.cooperative.create({
-    data: {
-      id: cooperativeId,
-      name: "Cooperativa Romagna Unita",
-      region: "Emilia-Romagna",
-      province: "Forlì-Cesena",
-      memberCount: 4,
-      plan: "cooperativa",
-    },
-  });
-
-  await prisma.farm.createMany({
-    data: [
-      {
-        id: farmIds.tondini,
-        name: "Azienda Agricola Tondini",
-        location: "Bertinoro",
-        province: "Forlì-Cesena",
-        hectares: 12,
-        specialty: "Vigneti romagnoli, frutta estiva e cereali",
-        cooperativeId,
-      },
-      {
-        id: farmIds.sanVittore,
-        name: "Podere San Vittore",
-        location: "Forlimpopoli",
-        province: "Forlì-Cesena",
-        hectares: 9.4,
-        specialty: "Viticoltura collinare e olivicoltura",
-        cooperativeId,
-      },
-      {
-        id: farmIds.fratta,
-        name: "Tenuta La Fratta",
-        location: "Cesena",
-        province: "Forlì-Cesena",
-        hectares: 14.2,
-        specialty: "Frutticoltura specializzata",
-        cooperativeId,
-      },
-      {
-        id: farmIds.caBianca,
-        name: "Azienda Cà Bianca",
-        location: "Faenza",
-        province: "Ravenna",
-        hectares: 22.8,
-        specialty: "Cereali, proteiche e foraggere",
-        cooperativeId,
-      },
-    ],
-  });
-
+  await prisma.cooperative.createMany({ data: cooperativeSeeds.map(({ adminUserId: _adminUserId, ...cooperative }) => cooperative) });
+  await prisma.farm.createMany({ data: farmSeeds });
   await prisma.field.createMany({
-    data: [
-      {
-        id: fieldIds.vignaCollinaSud,
-        name: "Vigna Collina Sud",
-        crop: "Sangiovese",
-        areaHa: 3.5,
-        status: "Invaiatura avanzata",
-        plantingDate: date("2021-03-18"),
-        municipality: "Bertinoro",
-        expectedHarvest: date("2026-09-12"),
-        expectedVolume: 28,
-        health: "Vigore alto, chioma uniforme",
-        irrigation: "A goccia · turnazione 48h",
-        notes: "Controllo oidio completato, acidità in equilibrio.",
-        farmId: farmIds.tondini,
-      },
-      {
-        id: fieldIds.vignaArgineEst,
-        name: "Vigna Argine Est",
-        crop: "Albana",
-        areaHa: 2,
-        status: "Fioritura stabile",
-        plantingDate: date("2020-04-09"),
-        municipality: "Bertinoro",
-        expectedHarvest: date("2026-08-29"),
-        expectedVolume: 15,
-        health: "Buona allegagione, umidità sotto controllo",
-        irrigation: "Sensori suolo attivi · 22% VWC",
-        notes: "Programmare sfogliatura lato monte entro 5 giorni.",
-        farmId: farmIds.tondini,
-      },
-      {
-        id: fieldIds.fruttetoSanMamante,
-        name: "Frutteto San Mamante",
-        crop: "Pesche",
-        areaHa: 1.5,
-        status: "Maturazione in corso",
-        plantingDate: date("2022-02-10"),
-        municipality: "Bertinoro",
-        expectedHarvest: date("2026-06-18"),
-        expectedVolume: 11,
-        health: "Calibro omogeneo, stress idrico assente",
-        irrigation: "A manichetta · ultimo ciclo ieri",
-        notes: "Lotto destinato in parte a vendita diretta in cascina.",
-        farmId: farmIds.tondini,
-      },
-      {
-        id: fieldIds.seminativoZampeschi,
-        name: "Seminativo Via Zampeschi",
-        crop: "Grano tenero",
-        areaHa: 5,
-        status: "Granigione",
-        plantingDate: date("2025-11-08"),
-        municipality: "Bertinoro",
-        expectedHarvest: date("2026-07-06"),
-        expectedVolume: 34,
-        health: "Copertura uniforme, pressione infestanti bassa",
-        irrigation: "Non irrigato · monitoraggio rugiada",
-        notes: "Proteina stimata 12,6%, finestra di trebbiatura in definizione.",
-        farmId: farmIds.tondini,
-      },
-      {
-        id: fieldIds.vignaSanVittore,
-        name: "Vigna San Vittore",
-        crop: "Sangiovese",
-        areaHa: 3.2,
-        status: "Pre-invaiatura",
-        plantingDate: date("2019-03-28"),
-        municipality: "Forlimpopoli",
-        expectedHarvest: date("2026-09-08"),
-        expectedVolume: 24,
-        health: "Foglia sana e sviluppo omogeneo",
-        irrigation: "Microirrigazione di supporto",
-        notes: "Parcella destinata alla linea cooperativa premium.",
-        farmId: farmIds.sanVittore,
-      },
-      {
-        id: fieldIds.ulivetoRonco,
-        name: "Uliveto Ronco",
-        crop: "Olivo",
-        areaHa: 2.4,
-        status: "Allegagione",
-        plantingDate: date("2018-04-02"),
-        municipality: "Forlimpopoli",
-        expectedHarvest: date("2026-10-20"),
-        expectedVolume: 8,
-        health: "Buona carica produttiva",
-        irrigation: "Deficit irrigation controllata",
-        notes: "Monitorare mosca olearia a inizio estate.",
-        farmId: farmIds.sanVittore,
-      },
-      {
-        id: fieldIds.susinetoFratta,
-        name: "Susineto La Fratta",
-        crop: "Susine",
-        areaHa: 2.8,
-        status: "Accrescimento frutto",
-        plantingDate: date("2021-02-22"),
-        municipality: "Cesena",
-        expectedHarvest: date("2026-07-10"),
-        expectedVolume: 18,
-        health: "Frutti omogenei, bassa pressione parassitaria",
-        irrigation: "Microjet con sensori tensiometrici",
-        notes: "Lotto destinato a GDO e mercati locali.",
-        farmId: farmIds.fratta,
-      },
-      {
-        id: fieldIds.albicoccheFratta,
-        name: "Albicocche Colli Fratta",
-        crop: "Albicocche",
-        areaHa: 1.9,
-        status: "Pre-raccolta",
-        plantingDate: date("2020-02-15"),
-        municipality: "Cesena",
-        expectedHarvest: date("2026-06-12"),
-        expectedVolume: 10,
-        health: "Maturazione uniforme",
-        irrigation: "Goccia con fertirrigazione",
-        notes: "Verificare finestra raccolta per canale horeca.",
-        farmId: farmIds.fratta,
-      },
-      {
-        id: fieldIds.medicaBianca,
-        name: "Medica Ovest",
-        crop: "Erba medica",
-        areaHa: 4.5,
-        status: "Ricaccio vegetativo",
-        plantingDate: date("2024-03-12"),
-        municipality: "Faenza",
-        expectedHarvest: date("2026-06-28"),
-        expectedVolume: 22,
-        health: "Cotico fitto e uniforme",
-        irrigation: "Piovana di soccorso",
-        notes: "Campo utile per carbon farming e rotazione.",
-        farmId: farmIds.caBianca,
-      },
-      {
-        id: fieldIds.granoBianca,
-        name: "Grano Nuovo Bianca",
-        crop: "Grano duro",
-        areaHa: 6.1,
-        status: "Levata avanzata",
-        plantingDate: date("2025-11-02"),
-        municipality: "Faenza",
-        expectedHarvest: date("2026-07-03"),
-        expectedVolume: 41,
-        health: "Buona densità, basso stress",
-        irrigation: "Secco",
-        notes: "Prevista destinazione a filiera pasta regionale.",
-        farmId: farmIds.caBianca,
-      },
-    ],
+    data: fieldSeeds.map(({ cropType: _cropType, variety: _variety, organic: _organic, certifications: _certifications, cooperativeId: _cooperativeId, plantingDaysAgo: _plantingDaysAgo, harvestInDays: _harvestInDays, ...field }) => field),
   });
+  await prisma.user.createMany({ data: userSeeds });
 
-  await prisma.user.createMany({
-    data: [
-      {
-        id: "user-tondini",
-        email: "marco@tondini.farm",
-        name: "Marco Tondini",
-        passwordHash: "$2b$10$JVRPtsdvaxUrlYcrKugE9Os2ELFDEvWyBfUG3TV0e0UU5vaJkKwL2",
-        role: "cooperative_admin",
-        cooperativeId,
-        farmId: farmIds.tondini,
-        phone: "+39 347 123 4567",
-        avatarInitials: "MT",
-        isActive: true,
-      },
-      {
-        id: "user-rossi",
-        email: "giulia@sanvittore.it",
-        name: "Giulia Rossi",
-        passwordHash: "$2b$10$JVRPtsdvaxUrlYcrKugE9Os2ELFDEvWyBfUG3TV0e0UU5vaJkKwL2",
-        role: "farm_manager",
-        cooperativeId,
-        farmId: farmIds.sanVittore,
-        phone: "+39 348 234 5678",
-        avatarInitials: "GR",
-        isActive: true,
-      },
-      {
-        id: "user-bianchi",
-        email: "luca@lafratta.it",
-        name: "Luca Bianchi",
-        passwordHash: "$2b$10$JVRPtsdvaxUrlYcrKugE9Os2ELFDEvWyBfUG3TV0e0UU5vaJkKwL2",
-        role: "farm_manager",
-        cooperativeId,
-        farmId: farmIds.fratta,
-        phone: "+39 349 345 6789",
-        avatarInitials: "LB",
-        isActive: true,
-      },
-      {
-        id: "user-verdi",
-        email: "anna@cabianca.farm",
-        name: "Anna Verdi",
-        passwordHash: "$2b$10$JVRPtsdvaxUrlYcrKugE9Os2ELFDEvWyBfUG3TV0e0UU5vaJkKwL2",
-        role: "agronomist",
-        cooperativeId,
-        farmId: farmIds.caBianca,
-        phone: "+39 350 456 7890",
-        avatarInitials: "AV",
-        isActive: true,
-      },
-    ],
-  });
+  for (const cooperative of cooperativeSeeds) {
+    await prisma.cooperative.update({ where: { id: cooperative.id }, data: { adminUserId: cooperative.adminUserId } });
+  }
 
-  await prisma.cooperative.update({
-    where: { id: cooperativeId },
-    data: { adminUserId: "user-tondini" },
-  });
+  const { records, events } = buildCompliance();
+  const { lots, traceabilityEvents, supplyChainLots } = buildLots();
+  const { devices, readings } = buildSensors();
+  const { costEntries, revenueEntries, carbonEntries } = buildFinance();
+  const { proposals, votes } = buildGovernance();
+  const { products, orders } = buildMarketplace();
 
-  await prisma.complianceRecord.createMany({
-    data: [
-      {
-        id: "comp-pac-2026",
-        fieldId: fieldIds.seminativoZampeschi,
-        type: "cap",
-        status: "in_corso",
-        title: "Dichiarazione PAC 2026 — Seminativo",
-        description: "Dichiarazione superfici per grano tenero con misura di greening.",
-        dueDate: date("2026-05-15"),
-        documents: ["Visura catastale", "Piano colturale"],
-        agencyRef: "AGEA-FC-2026-0847",
-      },
-      {
-        id: "comp-bio-vigna",
-        fieldId: fieldIds.vignaCollinaSud,
-        type: "organic",
-        status: "conforme",
-        title: "Certificazione biologica — Vigna Collina Sud",
-        description: "Quaderno di campagna e registrazione trattamenti bio.",
-        dueDate: date("2026-12-31"),
-        completedDate: date("2026-03-15"),
-        documents: ["Quaderno di campo", "Registro trattamenti bio", "Certificato ICEA"],
-        agencyRef: "ICEA-IT-BIO-2026-1234",
-      },
-      {
-        id: "comp-dop-albana",
-        fieldId: fieldIds.vignaArgineEst,
-        type: "dop",
-        status: "in_corso",
-        title: "DOP Albana di Romagna — Documentazione vendemmia",
-        description: "Resa per ettaro e grado zuccherino minimo per DOCG.",
-        dueDate: date("2026-09-30"),
-        documents: ["Registro vendemmia DOP", "Analisi enologica"],
-      },
-      {
-        id: "comp-igp-pesche",
-        fieldId: fieldIds.fruttetoSanMamante,
-        type: "igp",
-        status: "da_completare",
-        title: "Pesca di Romagna IGP — Registri di filiera",
-        description: "Preparazione documenti di tracciabilità e disciplinare prodotto.",
-        dueDate: date("2026-06-30"),
-        documents: ["Registro raccolta", "Tracciabilità lotti", "Analisi residui"],
-        agencyRef: "IGP-ROM-2026-441",
-      },
-    ],
-  });
+  await prisma.complianceRecord.createMany({ data: records });
+  await prisma.complianceEvent.createMany({ data: events });
+  await prisma.productLot.createMany({ data: lots });
+  await prisma.traceabilityEvent.createMany({ data: traceabilityEvents });
+  await prisma.sensorDevice.createMany({ data: devices });
+  await prisma.sensorReading.createMany({ data: readings });
+  await prisma.nDVIReading.createMany({ data: buildNdvi() });
+  await prisma.costEntry.createMany({ data: costEntries });
+  await prisma.revenueEntry.createMany({ data: revenueEntries });
+  await prisma.carbonEntry.createMany({ data: carbonEntries });
+  await prisma.eSGIndicator.createMany({ data: esgIndicators });
+  await prisma.harvestDeclaration.createMany({ data: harvestDeclarations });
+  await prisma.supplyChainLot.createMany({ data: supplyChainLots });
+  await prisma.irrigationSchedule.createMany({ data: irrigationSchedules });
+  await prisma.soilAnalysis.createMany({ data: soilAnalyses });
+  await prisma.diseaseRisk.createMany({ data: diseaseRisks });
+  await prisma.sprayPrescription.createMany({ data: sprayPrescriptions });
+  await prisma.equipment.createMany({ data: equipment });
+  await prisma.maintenanceEvent.createMany({ data: maintenanceEvents });
+  await prisma.seasonalWorker.createMany({ data: seasonalWorkers });
+  await prisma.workShift.createMany({ data: workShifts });
+  await prisma.proposal.createMany({ data: proposals });
+  await prisma.vote.createMany({ data: votes });
+  await prisma.marketplaceProduct.createMany({ data: products });
+  await prisma.order.createMany({ data: orders });
+  await prisma.insurancePolicy.createMany({ data: insurancePolicies });
+  await prisma.communicationChannel.createMany({ data: communicationChannels });
+  await prisma.message.createMany({ data: messages });
+  await prisma.farmBenchmark.createMany({ data: farmBenchmarks });
+  await prisma.yieldPrediction.createMany({ data: yieldPredictions });
+  await prisma.regulatoryUpdate.createMany({ data: regulatoryUpdates });
+  await prisma.simulationScenario.createMany({ data: simulationScenarios });
 
-  await prisma.complianceEvent.createMany({
-    data: [
-      {
-        id: "evt-1",
-        recordId: "comp-bio-vigna",
-        fieldId: fieldIds.vignaCollinaSud,
-        type: "trattamento",
-        date: date("2026-04-22T08:00:00+02:00"),
-        description: "Trattamento rameico preventivo anti-peronospora",
-        operator: "Marco Tondini",
-        product: "Poltiglia bordolese (20% Cu)",
-        quantity: "3.2 kg/ha",
-        notes: "Applicazione al mattino con umidità 72%.",
-        verified: true,
-      },
-      {
-        id: "evt-2",
-        recordId: "comp-bio-vigna",
-        fieldId: fieldIds.vignaCollinaSud,
-        type: "ispezione",
-        date: date("2026-03-15T10:30:00+02:00"),
-        description: "Audit annuale ICEA completato senza non conformità",
-        operator: "Dott.ssa Ferri",
-        notes: "Documentazione completa e aggiornata.",
-        verified: true,
-      },
-      {
-        id: "evt-3",
-        recordId: "comp-pac-2026",
-        fieldId: fieldIds.seminativoZampeschi,
-        type: "dichiarazione_pac",
-        date: date("2026-04-28T09:00:00+02:00"),
-        description: "Compilazione fascicolo aziendale per PAC 2026",
-        operator: "Marco Tondini",
-        notes: "In attesa conferma AGEA per protocollo definitivo.",
-        verified: false,
-      },
-      {
-        id: "evt-4",
-        recordId: "comp-dop-albana",
-        fieldId: fieldIds.vignaArgineEst,
-        type: "analisi",
-        date: date("2026-05-10T07:45:00+02:00"),
-        description: "Prelievo campioni per analisi pre-vendemmia",
-        operator: "Giulia Rossi",
-        notes: "Campioni inviati al laboratorio CRPV.",
-        verified: true,
-      },
-    ],
-  });
-
-  await prisma.productLot.createMany({
-    data: [
-      {
-        id: "lot-sangiovese-2026-a",
-        product: "Uva Sangiovese",
-        variety: "Sangiovese di Romagna",
-        harvestDate: date("2026-09-12"),
-        fieldId: fieldIds.vignaCollinaSud,
-        quantity: 4200,
-        unit: "kg",
-        status: "quality_checked",
-        certifications: ["Biologico certificato ICEA"],
-      },
-      {
-        id: "lot-albana-2026-a",
-        product: "Uva Albana",
-        variety: "Albana di Romagna DOCG",
-        harvestDate: date("2026-08-29"),
-        fieldId: fieldIds.vignaArgineEst,
-        quantity: 2700,
-        unit: "kg",
-        status: "routed",
-        certifications: ["DOCG Romagna", "Filiera cooperativa"],
-      },
-      {
-        id: "lot-pesche-2026-a",
-        product: "Pesche",
-        variety: "Pesca di Romagna IGP",
-        harvestDate: date("2026-06-18"),
-        fieldId: fieldIds.fruttetoSanMamante,
-        quantity: 1800,
-        unit: "kg",
-        status: "listed",
-        certifications: ["Controllo residui superato"],
-      },
-      {
-        id: "lot-grano-2026-a",
-        product: "Grano tenero",
-        variety: "Grano tenero romagnolo",
-        harvestDate: date("2026-07-06"),
-        fieldId: fieldIds.seminativoZampeschi,
-        quantity: 34000,
-        unit: "kg",
-        status: "received",
-        certifications: ["Filiera cereali Emilia-Romagna"],
-      },
-    ],
-  });
-
-  await prisma.traceabilityEvent.createMany({
-    data: [
-      {
-        id: "evt-sgv-1",
-        lotId: "lot-sangiovese-2026-a",
-        type: "campo",
-        timestamp: date("2026-04-22T08:00:00+02:00"),
-        location: "Vigna Collina Sud, Bertinoro",
-        operator: "Marco Tondini",
-        details: "Trattamento rameico preventivo e registrazione biologica completata.",
-        verified: true,
-      },
-      {
-        id: "evt-sgv-2",
-        lotId: "lot-sangiovese-2026-a",
-        type: "raccolta",
-        timestamp: date("2026-09-12T05:30:00+02:00"),
-        location: "Vigna Collina Sud, Bertinoro",
-        operator: "Squadra Cantina",
-        details: "Vendemmia manuale in cassette da 18 kg.",
-        verified: true,
-      },
-      {
-        id: "evt-sgv-3",
-        lotId: "lot-sangiovese-2026-a",
-        type: "lavorazione",
-        timestamp: date("2026-09-12T14:00:00+02:00"),
-        location: "Cantina Sociale Bertinoro",
-        operator: "Enologo cooperativa",
-        details: "Diraspatura e pigiatura entro 3 ore dalla raccolta.",
-        verified: true,
-      },
-      {
-        id: "evt-psc-1",
-        lotId: "lot-pesche-2026-a",
-        type: "raccolta",
-        timestamp: date("2026-06-18T05:30:00+02:00"),
-        location: "Frutteto San Mamante, Bertinoro",
-        operator: "Squadra Alba",
-        details: "Raccolta mattutina con prima cernita in campo.",
-        verified: true,
-      },
-      {
-        id: "evt-psc-2",
-        lotId: "lot-pesche-2026-a",
-        type: "distribuzione",
-        timestamp: date("2026-06-18T14:00:00+02:00"),
-        location: "Mercato Forlì / GDO",
-        operator: "Autista consegne",
-        details: "Consegna mercato locale e GDO regionale.",
-        verified: true,
-      },
-      {
-        id: "evt-grano-1",
-        lotId: "lot-grano-2026-a",
-        type: "trasporto",
-        timestamp: date("2026-07-06T12:00:00+02:00"),
-        location: "Molino partner Forlimpopoli",
-        operator: "Logistica cooperativa",
-        details: "Conferimento immediato al molino con documento di pesatura.",
-        verified: true,
-      },
-    ],
-  });
-
-  await prisma.sensorDevice.createMany({
-    data: [
-      {
-        id: "sensor-soil-vcs",
-        name: "Sonda suolo #1 — Vigna Collina Sud",
-        type: "soil_moisture",
-        fieldId: fieldIds.vignaCollinaSud,
-        status: "online",
-        lastReading: date("2026-05-13T08:25:00+02:00"),
-        batteryLevel: 78,
-        firmware: "v2.1.4",
-      },
-      {
-        id: "sensor-temp-vcs",
-        name: "Termometro aria — Vigna Collina Sud",
-        type: "temperature",
-        fieldId: fieldIds.vignaCollinaSud,
-        status: "online",
-        lastReading: date("2026-05-13T08:28:00+02:00"),
-        batteryLevel: 85,
-        firmware: "v2.1.4",
-      },
-      {
-        id: "sensor-soil-vae",
-        name: "Sonda suolo #2 — Vigna Argine Est",
-        type: "soil_moisture",
-        fieldId: fieldIds.vignaArgineEst,
-        status: "online",
-        lastReading: date("2026-05-13T08:20:00+02:00"),
-        batteryLevel: 62,
-        firmware: "v2.1.3",
-      },
-      {
-        id: "sensor-rain-farm",
-        name: "Pluviometro — Stazione aziendale",
-        type: "rain_gauge",
-        fieldId: fieldIds.vignaCollinaSud,
-        status: "online",
-        lastReading: date("2026-05-13T08:30:00+02:00"),
-        batteryLevel: 100,
-        firmware: "v3.0.1",
-      },
-      {
-        id: "sensor-flow-fsm",
-        name: "Flussimetro irrigazione — Frutteto",
-        type: "irrigation_flow",
-        fieldId: fieldIds.fruttetoSanMamante,
-        status: "warning",
-        lastReading: date("2026-05-13T07:45:00+02:00"),
-        batteryLevel: 18,
-        firmware: "v1.5.0",
-      },
-    ],
-  });
-
-  await prisma.sensorReading.createMany({
-    data: [
-      { id: "reading-soil-vcs-1", sensorId: "sensor-soil-vcs", timestamp: date("2026-05-13T06:30:00+02:00"), value: 21.7, unit: "% VWC", quality: "good" },
-      { id: "reading-soil-vcs-2", sensorId: "sensor-soil-vcs", timestamp: date("2026-05-13T07:30:00+02:00"), value: 22.1, unit: "% VWC", quality: "good" },
-      { id: "reading-soil-vcs-3", sensorId: "sensor-soil-vcs", timestamp: date("2026-05-13T08:25:00+02:00"), value: 22.4, unit: "% VWC", quality: "good" },
-      { id: "reading-temp-vcs-1", sensorId: "sensor-temp-vcs", timestamp: date("2026-05-13T06:30:00+02:00"), value: 18.9, unit: "°C", quality: "good" },
-      { id: "reading-temp-vcs-2", sensorId: "sensor-temp-vcs", timestamp: date("2026-05-13T07:30:00+02:00"), value: 19.8, unit: "°C", quality: "good" },
-      { id: "reading-temp-vcs-3", sensorId: "sensor-temp-vcs", timestamp: date("2026-05-13T08:28:00+02:00"), value: 20.6, unit: "°C", quality: "good" },
-      { id: "reading-soil-vae-1", sensorId: "sensor-soil-vae", timestamp: date("2026-05-13T06:00:00+02:00"), value: 18.2, unit: "% VWC", quality: "good" },
-      { id: "reading-soil-vae-2", sensorId: "sensor-soil-vae", timestamp: date("2026-05-13T07:00:00+02:00"), value: 18.9, unit: "% VWC", quality: "good" },
-      { id: "reading-soil-vae-3", sensorId: "sensor-soil-vae", timestamp: date("2026-05-13T08:20:00+02:00"), value: 19.4, unit: "% VWC", quality: "good" },
-      { id: "reading-rain-1", sensorId: "sensor-rain-farm", timestamp: date("2026-05-13T08:30:00+02:00"), value: 0.6, unit: "mm", quality: "good" },
-      { id: "reading-flow-1", sensorId: "sensor-flow-fsm", timestamp: date("2026-05-13T06:45:00+02:00"), value: 2.1, unit: "L/min", quality: "warning" },
-      { id: "reading-flow-2", sensorId: "sensor-flow-fsm", timestamp: date("2026-05-13T07:45:00+02:00"), value: 1.8, unit: "L/min", quality: "warning" },
-    ],
-  });
-
-  await prisma.nDVIReading.createMany({
-    data: [
-      { id: "ndvi-vcs-1", fieldId: fieldIds.vignaCollinaSud, date: date("2026-03-15"), ndviValue: 0.32, healthStatus: "moderato", cloudCover: 15, satellite: "sentinel-2" },
-      { id: "ndvi-vcs-2", fieldId: fieldIds.vignaCollinaSud, date: date("2026-05-13"), ndviValue: 0.74, healthStatus: "ottimo", cloudCover: 20, satellite: "sentinel-2" },
-      { id: "ndvi-vae-1", fieldId: fieldIds.vignaArgineEst, date: date("2026-03-15"), ndviValue: 0.28, healthStatus: "stress", cloudCover: 15, satellite: "sentinel-2" },
-      { id: "ndvi-vae-2", fieldId: fieldIds.vignaArgineEst, date: date("2026-05-13"), ndviValue: 0.61, healthStatus: "buono", cloudCover: 18, satellite: "sentinel-2" },
-      { id: "ndvi-fsm-1", fieldId: fieldIds.fruttetoSanMamante, date: date("2026-04-16"), ndviValue: 0.62, healthStatus: "buono", cloudCover: 6, satellite: "sentinel-2" },
-      { id: "ndvi-fsm-2", fieldId: fieldIds.fruttetoSanMamante, date: date("2026-05-13"), ndviValue: 0.68, healthStatus: "buono", cloudCover: 10, satellite: "sentinel-2" },
-      { id: "ndvi-svz-1", fieldId: fieldIds.seminativoZampeschi, date: date("2026-04-01"), ndviValue: 0.68, healthStatus: "buono", cloudCover: 5, satellite: "sentinel-2" },
-      { id: "ndvi-svz-2", fieldId: fieldIds.seminativoZampeschi, date: date("2026-05-13"), ndviValue: 0.72, healthStatus: "ottimo", cloudCover: 22, satellite: "sentinel-2" },
-    ],
-  });
-
-  await prisma.costEntry.createMany({
-    data: [
-      { id: "cost-vcs-fertilizer", farmId: farmIds.tondini, fieldId: fieldIds.vignaCollinaSud, category: "fertilizer", description: "Concimazione fogliare di supporto e microelementi", amount: 820, date: date("2026-04-17") },
-      { id: "cost-vcs-protection", farmId: farmIds.tondini, fieldId: fieldIds.vignaCollinaSud, category: "plant_protection", description: "Trattamenti rameici e zolfo bagnabile", amount: 1260, date: date("2026-04-22") },
-      { id: "cost-vae-fuel", farmId: farmIds.tondini, fieldId: fieldIds.vignaArgineEst, category: "fuel", description: "Gasolio per passaggi interfilari", amount: 610, date: date("2026-05-02") },
-      { id: "cost-vae-labor", farmId: farmIds.tondini, fieldId: fieldIds.vignaArgineEst, category: "labor", description: "Sfogliatura lato monte e campionamenti", amount: 1560, date: date("2026-05-06") },
-      { id: "cost-fsm-water", farmId: farmIds.tondini, fieldId: fieldIds.fruttetoSanMamante, category: "water", description: "Irrigazione a manichetta e filtrazione", amount: 380, date: date("2026-05-07") },
-      { id: "cost-fsm-labor", farmId: farmIds.tondini, fieldId: fieldIds.fruttetoSanMamante, category: "labor", description: "Diradamento e raccolta anticipata", amount: 1980, date: date("2026-05-21") },
-      { id: "cost-svz-seed", farmId: farmIds.tondini, fieldId: fieldIds.seminativoZampeschi, category: "seed", description: "Seme certificato grano tenero", amount: 540, date: date("2025-11-08") },
-      { id: "cost-svz-machinery", farmId: farmIds.tondini, fieldId: fieldIds.seminativoZampeschi, category: "machinery", description: "Trebbia e logistica di campagna", amount: 1320, date: date("2026-07-06") },
-      { id: "cost-san-vittore-shared", farmId: farmIds.sanVittore, fieldId: fieldIds.vignaSanVittore, category: "machinery", description: "Noleggio attrezzature condivise cooperativa", amount: 760, date: date("2026-05-11") },
-      { id: "cost-fratta-packaging", farmId: farmIds.fratta, fieldId: fieldIds.susinetoFratta, category: "overhead", description: "Packaging e logistica frutta fresca", amount: 690, date: date("2026-06-27") },
-      { id: "cost-cabianca-insurance", farmId: farmIds.caBianca, fieldId: fieldIds.granoBianca, category: "insurance", description: "Polizza grandine cereali", amount: 520, date: date("2026-04-01") },
-    ],
-  });
-
-  await prisma.revenueEntry.createMany({
-    data: [
-      { id: "revenue-vcs-coop", farmId: farmIds.tondini, source: "cooperative_distribution", description: "Conferimento Sangiovese alla cantina cooperativa", amount: 18480, date: date("2026-09-12") },
-      { id: "revenue-vcs-marketplace", farmId: farmIds.tondini, source: "marketplace", description: "Vendita diretta lotto premium e degustazioni", amount: 3820, date: date("2026-10-08") },
-      { id: "revenue-vae-coop", farmId: farmIds.tondini, source: "cooperative_distribution", description: "Conferimento Albana DOCG alla cantina cooperativa", amount: 12300, date: date("2026-08-29") },
-      { id: "revenue-fsm-marketplace", farmId: farmIds.tondini, source: "marketplace", description: "Vendita diretta cassette pesche e canale horeca", amount: 14250, date: date("2026-06-18") },
-      { id: "revenue-svz-coop", farmId: farmIds.tondini, source: "cooperative_distribution", description: "Conferimento grano tenero al molino partner", amount: 11900, date: date("2026-07-06") },
-      { id: "revenue-san-vittore", farmId: farmIds.sanVittore, source: "cooperative_distribution", description: "Conferimento Sangiovese collinare", amount: 15800, date: date("2026-09-08") },
-      { id: "revenue-fratta", farmId: farmIds.fratta, source: "marketplace", description: "Vendita susine premium e albicocche horeca", amount: 13240, date: date("2026-07-10") },
-      { id: "revenue-cabianca", farmId: farmIds.caBianca, source: "cap_subsidy", description: "Premio carbon farming e rotazione foraggere", amount: 4680, date: date("2026-11-02") },
-    ],
-  });
-
-  await prisma.carbonEntry.createMany({
-    data: [
-      { id: "carbon-vcs-diesel", farmId: farmIds.tondini, fieldId: fieldIds.vignaCollinaSud, type: "emission", category: "fuel", description: "Gasolio agricolo per trattore filare", co2Kg: 375.2, date: date("2026-05-04"), verified: true },
-      { id: "carbon-vcs-cover-crop", farmId: farmIds.tondini, fieldId: fieldIds.vignaCollinaSud, type: "sequestration", category: "cover_crop", description: "Inerbimento permanente interfilare", co2Kg: 630, date: date("2026-05-10"), verified: true },
-      { id: "carbon-vae-pesticide", farmId: farmIds.tondini, fieldId: fieldIds.vignaArgineEst, type: "emission", category: "treatments", description: "Prodotti fitosanitari e passaggi di difesa", co2Kg: 29.6, date: date("2026-04-26"), verified: true },
-      { id: "carbon-fsm-electricity", farmId: farmIds.tondini, fieldId: fieldIds.fruttetoSanMamante, type: "emission", category: "electricity", description: "Energia per impianto irriguo e celle frigo", co2Kg: 84.4, date: date("2026-05-08"), verified: true },
-      { id: "carbon-cabianca-medica", farmId: farmIds.caBianca, fieldId: fieldIds.medicaBianca, type: "sequestration", category: "organic_matter", description: "Miglioramento carbonio organico su medica pluriennale", co2Kg: 540, date: date("2026-06-01"), verified: false },
-      { id: "carbon-grano-bianca", farmId: farmIds.caBianca, fieldId: fieldIds.granoBianca, type: "emission", category: "machinery", description: "Ore macchina e lavorazioni conservative", co2Kg: 240, date: date("2026-04-22"), verified: false },
-    ],
-  });
-
-  await prisma.eSGIndicator.createMany({
-    data: [
-      { id: "esg-e01", cooperativeId, category: "environmental", name: "Impronta carbonica (Scope 1+2)", value: 142, unit: "tCO2e/anno", period: "2026", target: 120 },
-      { id: "esg-e02", cooperativeId, category: "environmental", name: "Efficienza idrica", value: 185, unit: "m3/t", period: "2026", target: 160 },
-      { id: "esg-s01", cooperativeId, category: "social", name: "Occupazione locale", value: 65, unit: "% del totale", period: "2026", target: 70 },
-      { id: "esg-s02", cooperativeId, category: "social", name: "Formazione sicurezza", value: 12, unit: "ore/lav/anno", period: "2026", target: 16 },
-      { id: "esg-g01", cooperativeId, category: "governance", name: "Partecipazione assembleare", value: 78, unit: "% soci", period: "2026", target: 85 },
-      { id: "esg-g02", cooperativeId, category: "governance", name: "Trasparenza decisionale", value: 94, unit: "% decisioni", period: "2026", target: 100 },
-    ],
-  });
-
-  await prisma.harvestDeclaration.createMany({
-    data: [
-      {
-        id: "harvest-pesche",
-        fieldId: fieldIds.fruttetoSanMamante,
-        estimatedDate: date("2026-06-18"),
-        estimatedKg: 11000,
-        actualKg: 10850,
-        status: "confermato",
-        quality: "Extra",
-        notes: "Destinazione: mercato locale e GDO regionale.",
-      },
-      {
-        id: "harvest-grano",
-        fieldId: fieldIds.seminativoZampeschi,
-        estimatedDate: date("2026-07-06"),
-        estimatedKg: 34000,
-        status: "programmato",
-        quality: "Molitoria A",
-        notes: "Controllare umidità granella prima della trebbiatura.",
-      },
-      {
-        id: "harvest-albana",
-        fieldId: fieldIds.vignaArgineEst,
-        estimatedDate: date("2026-08-29"),
-        estimatedKg: 15000,
-        status: "programmato",
-        quality: "DOCG selezione",
-        notes: "Raccolta in cassette da 18 kg per selezione manuale.",
-      },
-      {
-        id: "harvest-sangiovese",
-        fieldId: fieldIds.vignaCollinaSud,
-        estimatedDate: date("2026-09-12"),
-        estimatedKg: 28000,
-        status: "programmato",
-        quality: "Superiore",
-        notes: "Obiettivo: linea superiore cooperativa.",
-      },
-    ],
-  });
-
-  await prisma.supplyChainLot.createMany({
-    data: [
-      { id: "supply-pesche-fresco-2026-a", product: "Pesche", origin: "Bertinoro", destination: "Hub cooperativo Forlì", status: "listed", quantity: 1800, departureDate: date("2026-06-18T10:10:00+02:00"), arrivalDate: date("2026-06-18T12:40:00+02:00") },
-      { id: "supply-grano-mulino-2026-a", product: "Grano tenero", origin: "Bertinoro", destination: "Molino partner Forlimpopoli", status: "received", quantity: 34000, departureDate: date("2026-07-06T08:00:00+02:00"), arrivalDate: date("2026-07-06T12:00:00+02:00") },
-      { id: "supply-albana-cantina-2026-a", product: "Albana", origin: "Vigna Argine Est", destination: "Cantina Sociale Bertinoro", status: "routed", quantity: 2700, departureDate: date("2026-08-29T06:00:00+02:00") },
-      { id: "supply-sangiovese-cantina-2026-a", product: "Sangiovese", origin: "Vigna Collina Sud", destination: "Cantina Sociale Bertinoro", status: "quality_checked", quantity: 4200, departureDate: date("2026-09-12T11:00:00+02:00") },
-    ],
-  });
-
-  await prisma.irrigationSchedule.createMany({
-    data: [
-      { id: "irr-vigna-collina-sud", fieldId: fieldIds.vignaCollinaSud, method: "Ala gocciolante notturna", startDate: date("2026-05-14T01:00:00+02:00"), endDate: date("2026-05-14T05:00:00+02:00"), waterMm: 11, status: "scheduled", frequency: "48h" },
-      { id: "irr-vigna-argine-est", fieldId: fieldIds.vignaArgineEst, method: "Goccia con sensori VWC", startDate: date("2026-05-14T02:00:00+02:00"), endDate: date("2026-05-14T05:30:00+02:00"), waterMm: 13, status: "scheduled", frequency: "72h" },
-      { id: "irr-frutteto-san-mamante", fieldId: fieldIds.fruttetoSanMamante, method: "Microjet a settore", startDate: date("2026-05-13T04:00:00+02:00"), endDate: date("2026-05-13T07:00:00+02:00"), waterMm: 16, status: "completed", frequency: "24h" },
-      { id: "irr-seminativo-zampeschi", fieldId: fieldIds.seminativoZampeschi, method: "Turno sospeso e monitoraggio rugiada", startDate: date("2026-05-15T05:00:00+02:00"), endDate: date("2026-05-15T07:00:00+02:00"), waterMm: 5, status: "skipped", frequency: "on-demand" },
-    ],
-  });
-
-  await prisma.soilAnalysis.createMany({
-    data: [
-      { id: "soil-vcs-2026", fieldId: fieldIds.vignaCollinaSud, date: date("2026-02-18"), ph: 7.4, organicMatter: 2.2, nitrogen: 1120, phosphorus: 18, potassium: 210, texture: "argilloso", notes: "Valutare aumento sostanza organica con cover crop." },
-      { id: "soil-vae-2026", fieldId: fieldIds.vignaArgineEst, date: date("2026-02-18"), ph: 7.1, organicMatter: 2.5, nitrogen: 1240, phosphorus: 22, potassium: 195, texture: "franco-argilloso", notes: "Buona dotazione, correggere stress idrico primaverile." },
-      { id: "soil-fsm-2026", fieldId: fieldIds.fruttetoSanMamante, date: date("2026-02-25"), ph: 6.8, organicMatter: 3.1, nitrogen: 1680, phosphorus: 35, potassium: 165, texture: "franco", notes: "Campione equilibrato, mantenere apporto organico." },
-      { id: "soil-svz-2026", fieldId: fieldIds.seminativoZampeschi, date: date("2026-01-30"), ph: 7.5, organicMatter: 2.4, nitrogen: 1280, phosphorus: 22, potassium: 195, texture: "franco-argilloso", notes: "Attenzione al bilancio potassico in post-raccolta." },
-    ],
-  });
-
-  await prisma.diseaseRisk.createMany({
-    data: [
-      {
-        id: "risk-vcs-peronospora",
-        disease: "Peronospora",
-        crop: "Sangiovese",
-        riskLevel: "high",
-        region: "Romagna collinare",
-        detectedDate: date("2026-05-13T08:30:00+02:00"),
-        recommendations: [
-          "Trattamento preventivo entro 24 ore con finestra mattutina.",
-          "Ridurre densità chioma lato sud per aumentare ventilazione.",
-        ],
-      },
-      {
-        id: "risk-vae-oidio",
-        disease: "Oidio",
-        crop: "Albana",
-        riskLevel: "high",
-        region: "Bertinoro",
-        detectedDate: date("2026-05-13T08:30:00+02:00"),
-        recommendations: [
-          "Applicare zolfo micronizzato in serata.",
-          "Completare sfogliatura lato monte entro 5 giorni.",
-        ],
-      },
-      {
-        id: "risk-fsm-monilia",
-        disease: "Monilia bruna",
-        crop: "Pesche",
-        riskLevel: "high",
-        region: "Forlì-Cesena",
-        detectedDate: date("2026-05-13T08:30:00+02:00"),
-        recommendations: [
-          "Intensificare monitoraggio frutti in maturazione.",
-          "Prediligere raccolta nelle parcelle con umidità più alta.",
-        ],
-      },
-      {
-        id: "risk-grano-fusariosi",
-        disease: "Fusariosi di rete",
-        crop: "Grano tenero",
-        riskLevel: "moderate",
-        region: "Pianura romagnola",
-        detectedDate: date("2026-05-13T08:30:00+02:00"),
-        recommendations: [
-          "Continuare sorveglianza post-pioggia.",
-          "Verificare umidità granella in pre-raccolta.",
-        ],
-      },
-    ],
-  });
-
-  await prisma.sprayPrescription.createMany({
-    data: [
-      { id: "rx-vcs-peronospora", fieldId: fieldIds.vignaCollinaSud, product: "Poltiglia Bordolese 20%", dosage: "3 kg/ha", applicationDate: date("2026-05-14T07:00:00+02:00"), status: "approvato", operator: "Marco Tondini", weatherOk: true },
-      { id: "rx-vae-oidio", fieldId: fieldIds.vignaArgineEst, product: "Zolfo bagnabile micronizzato", dosage: "4 kg/ha", applicationDate: date("2026-05-14T19:00:00+02:00"), status: "approvato", operator: "Giulia Rossi", weatherOk: true },
-      { id: "rx-fsm-monilia", fieldId: fieldIds.fruttetoSanMamante, product: "Bacillus subtilis", dosage: "2.5 L/ha", applicationDate: date("2026-05-13T18:30:00+02:00"), status: "bozza", operator: "Luca Bianchi", weatherOk: false },
-    ],
-  });
-
-  await prisma.equipment.createMany({
-    data: [
-      { id: "eq-001", name: "Trattore Landini Rex 4-110", type: "trattore", status: "operativo", farmId: farmIds.tondini, lastMaintenance: date("2025-06-10"), nextMaintenance: date("2025-09-10"), hoursUsed: 2340 },
-      { id: "eq-002", name: "Irroratrice Caffini Synthesis", type: "irroratrice", status: "operativo", farmId: farmIds.tondini, lastMaintenance: date("2025-04-20"), nextMaintenance: date("2025-10-20"), hoursUsed: 620 },
-      { id: "eq-003", name: "Mietitrebbia Claas Lexion 6700", type: "mietitrebbia", status: "operativo", farmId: farmIds.caBianca, lastMaintenance: date("2025-06-25"), nextMaintenance: date("2025-07-25"), hoursUsed: 4120 },
-      { id: "eq-004", name: "Impianto irrigazione a goccia Netafim", type: "irrigazione", status: "in_manutenzione", farmId: farmIds.fratta, lastMaintenance: date("2025-03-15"), nextMaintenance: date("2025-09-15"), hoursUsed: 3200 },
-    ],
-  });
-
-  await prisma.maintenanceEvent.createMany({
-    data: [
-      { id: "mnt-001", equipmentId: "eq-001", date: date("2025-06-10"), type: "tagliando", description: "Tagliando 2.000 ore con cambio filtri", cost: 450, technician: "Officina Tosi Forlì" },
-      { id: "mnt-002", equipmentId: "eq-002", date: date("2025-04-20"), type: "calibrazione", description: "Calibrazione ugelli e verifica portata", cost: 280, technician: "Caffini Service Center" },
-      { id: "mnt-003", equipmentId: "eq-003", date: date("2025-06-25"), type: "tagliando", description: "Pre-campagna mietitura e controllo barra", cost: 1850, technician: "Claas Dealer Ravenna" },
-      { id: "mnt-004", equipmentId: "eq-004", date: date("2025-07-10"), type: "riparazione", description: "Sostituzione pompa e verifica impianto", cost: 920, technician: "Netafim Service Emilia-Romagna" },
-    ],
-  });
-
-  await prisma.seasonalWorker.createMany({
-    data: [
-      { id: "w-001", name: "Andrei Popescu", role: "Raccoglitore", cooperativeId, startDate: date("2026-05-01"), endDate: date("2026-10-31"), status: "attivo", certifications: ["sicurezza_base"] },
-      { id: "w-002", name: "Maria Ionescu", role: "Potatore", cooperativeId, startDate: date("2026-04-15"), endDate: date("2026-11-15"), status: "attivo", certifications: ["sicurezza_base", "fitosanitario"] },
-      { id: "w-003", name: "Ahmed El Fassi", role: "Trattorista", cooperativeId, startDate: date("2026-03-01"), endDate: date("2026-11-30"), status: "attivo", certifications: ["sicurezza_base", "trattorista", "primo_soccorso"] },
-      { id: "w-004", name: "Elena Dragomir", role: "Addetta confezionamento", cooperativeId, startDate: date("2026-06-01"), endDate: date("2026-10-15"), status: "in_onboarding", certifications: ["sicurezza_base"] },
-    ],
-  });
-
-  await prisma.workShift.createMany({
-    data: [
-      { id: "shift-001", workerId: "w-001", date: date("2026-06-18"), startTime: date("2026-06-18T05:30:00+02:00"), endTime: date("2026-06-18T12:30:00+02:00"), fieldId: fieldIds.fruttetoSanMamante, task: "Raccolta pesche e prima cernita", hoursWorked: 6.5 },
-      { id: "shift-002", workerId: "w-002", date: date("2026-05-14"), startTime: date("2026-05-14T06:00:00+02:00"), endTime: date("2026-05-14T12:30:00+02:00"), fieldId: fieldIds.vignaCollinaSud, task: "Sfogliatura verde Sangiovese", hoursWorked: 6 },
-      { id: "shift-003", workerId: "w-003", date: date("2026-05-14"), startTime: date("2026-05-14T07:00:00+02:00"), endTime: date("2026-05-14T15:00:00+02:00"), fieldId: fieldIds.vignaArgineEst, task: "Trattamento fitosanitario Albana", hoursWorked: 7 },
-      { id: "shift-004", workerId: "w-004", date: date("2026-06-18"), startTime: date("2026-06-18T13:30:00+02:00"), endTime: date("2026-06-18T18:30:00+02:00"), fieldId: fieldIds.fruttetoSanMamante, task: "Confezionamento pesche", hoursWorked: 4.5 },
-      { id: "shift-005", workerId: "w-003", date: date("2026-07-06"), startTime: date("2026-07-06T07:00:00+02:00"), endTime: date("2026-07-06T18:00:00+02:00"), fieldId: fieldIds.seminativoZampeschi, task: "Supporto trebbiatura e logistica", hoursWorked: 10 },
-    ],
-  });
-
-  await prisma.proposal.createMany({
-    data: [
-      {
-        id: "proposal-irrigazione-2026",
-        cooperativeId,
-        title: "Piano turni irrigui condivisi estate 2026",
-        description: "Turnazione cooperativa per ottimizzare le finestre di pompaggio e ridurre i picchi di prelievo.",
-        status: "open",
-        createdBy: "user-tondini",
-        createdAt: date("2026-05-08T09:00:00+02:00"),
-        votesFor: 1,
-        votesAgainst: 0,
-      },
-      {
-        id: "proposal-liquidazioni-estive",
-        cooperativeId,
-        title: "Anticipo liquidazioni conferimenti estivi",
-        description: "Anticipo del 35% sulle liquidazioni delle pesche conferite.",
-        status: "voting",
-        createdBy: "user-rossi",
-        createdAt: date("2026-05-05T11:30:00+02:00"),
-        votesFor: 2,
-        votesAgainst: 0,
-      },
-      {
-        id: "proposal-sensori-cantina",
-        cooperativeId,
-        title: "Acquisto modulo sensori qualità per la cantina sociale",
-        description: "Investimento condiviso per monitoraggio temperatura, umidità e tracciabilità lotti.",
-        status: "approved",
-        createdBy: "user-tondini",
-        createdAt: date("2026-04-01T10:00:00+02:00"),
-        votesFor: 3,
-        votesAgainst: 0,
-      },
-    ],
-  });
-
-  await prisma.vote.createMany({
-    data: [
-      { id: "vote-liquidazioni-1", proposalId: "proposal-liquidazioni-estive", userId: "user-tondini", vote: "favor", timestamp: date("2026-05-13T08:10:00+02:00") },
-      { id: "vote-liquidazioni-2", proposalId: "proposal-liquidazioni-estive", userId: "user-rossi", vote: "favor", timestamp: date("2026-05-13T08:25:00+02:00") },
-      { id: "vote-liquidazioni-3", proposalId: "proposal-liquidazioni-estive", userId: "user-verdi", vote: "abstain", timestamp: date("2026-05-13T08:42:00+02:00") },
-      { id: "vote-sensori-1", proposalId: "proposal-sensori-cantina", userId: "user-tondini", vote: "favor", timestamp: date("2026-04-17T17:10:00+02:00") },
-      { id: "vote-sensori-2", proposalId: "proposal-sensori-cantina", userId: "user-rossi", vote: "favor", timestamp: date("2026-04-17T18:05:00+02:00") },
-      { id: "vote-sensori-3", proposalId: "proposal-sensori-cantina", userId: "user-bianchi", vote: "favor", timestamp: date("2026-04-18T09:20:00+02:00") },
-      { id: "vote-irrigazione-1", proposalId: "proposal-irrigazione-2026", userId: "user-tondini", vote: "favor", timestamp: date("2026-05-14T07:45:00+02:00") },
-    ],
-  });
-
-  await prisma.marketplaceProduct.createMany({
-    data: [
-      { id: "prod-sangiovese-sfuso", name: "Sangiovese di Romagna — Sfuso", category: "vino", price: 6.5, unit: "litro", farmId: farmIds.tondini, available: true, organic: true },
-      { id: "prod-albana-docg", name: "Albana di Romagna DOCG", category: "vino", price: 12, unit: "bottiglia 0.75L", farmId: farmIds.tondini, available: true, organic: true },
-      { id: "prod-pesche-cassetta", name: "Pesche di Romagna — Cassetta 5 kg", category: "frutta", price: 15, unit: "cassetta 5 kg", farmId: farmIds.tondini, available: true, organic: false },
-      { id: "prod-farina-grano", name: "Farina di grano tenero tipo 2", category: "cereali", price: 3.8, unit: "kg", farmId: farmIds.tondini, available: true, organic: false },
-      { id: "prod-miele-acacia", name: "Miele di Acacia della Romagna", category: "trasformati", price: 9.5, unit: "vasetto 500g", farmId: farmIds.sanVittore, available: true, organic: false },
-    ],
-  });
-
-  await prisma.order.createMany({
-    data: [
-      { id: "ord-001", productId: "prod-pesche-cassetta", buyerId: "user-rossi", quantity: 2, totalPrice: 30, status: "confermato", orderDate: date("2026-06-15T10:30:00+02:00") },
-      { id: "ord-002", productId: "prod-albana-docg", buyerId: "user-bianchi", quantity: 12, totalPrice: 144, status: "in_preparazione", orderDate: date("2026-06-14T14:00:00+02:00") },
-      { id: "ord-003", productId: "prod-miele-acacia", buyerId: "user-verdi", quantity: 2, totalPrice: 19, status: "nuovo", orderDate: date("2026-06-16T08:15:00+02:00") },
-    ],
-  });
-
-  await prisma.insurancePolicy.createMany({
-    data: [
-      { id: "pol-001", farmId: farmIds.tondini, type: "Multirischio colture", provider: "Generali Agro", coverageAmount: 85000, premium: 4200, startDate: date("2026-03-01"), endDate: date("2026-11-30"), status: "attiva" },
-      { id: "pol-002", farmId: farmIds.sanVittore, type: "Parametrica siccità", provider: "Cattolica Assicurazioni", coverageAmount: 62000, premium: 2800, startDate: date("2026-04-01"), endDate: date("2026-10-31"), status: "attiva" },
-      { id: "pol-003", farmId: farmIds.caBianca, type: "Resa garantita", provider: "Generali Agro", coverageAmount: 45000, premium: 1950, startDate: date("2026-01-01"), endDate: date("2026-12-31"), status: "attiva" },
-    ],
-  });
-
-  await prisma.communicationChannel.createMany({
-    data: [
-      { id: "ch-001", name: "Cooperativa Generale", type: "cooperativa", cooperativeId, memberCount: 42 },
-      { id: "ch-002", name: "Viticoltori", type: "coltura", cooperativeId, memberCount: 18 },
-      { id: "ch-003", name: "Lavoratori stagionali", type: "ruolo", cooperativeId, memberCount: 24 },
-    ],
-  });
-
-  await prisma.message.createMany({
-    data: [
-      {
-        id: "msg-001",
-        channelId: "ch-001",
-        senderId: "user-tondini",
-        content: "⚠️ Allerta grandine domani 16/07 ore 14-18. Verificare reti antigrandine e teli di copertura.",
-        timestamp: date("2026-07-15T14:30:00+02:00"),
-        readBy: ["user-tondini", "user-rossi"],
-      },
-      {
-        id: "msg-002",
-        channelId: "ch-002",
-        senderId: "user-rossi",
-        content: "Trattamento antiperonosporico entro venerdì 18/07 come da bollettino ARPAE.",
-        timestamp: date("2026-07-15T11:20:00+02:00"),
-        readBy: ["user-rossi"],
-      },
-      {
-        id: "msg-003",
-        channelId: "ch-003",
-        senderId: "user-tondini",
-        content: "Turni settimana 14-18 luglio pubblicati nel modulo Workforce.",
-        timestamp: date("2026-07-15T06:30:00+02:00"),
-        readBy: ["user-tondini", "user-verdi"],
-      },
-      {
-        id: "msg-004",
-        channelId: "ch-001",
-        senderId: "user-bianchi",
-        content: "Assemblea ordinaria dei soci il 25 luglio ore 20:30 presso la sede cooperativa.",
-        timestamp: date("2026-07-14T16:00:00+02:00"),
-        readBy: ["user-bianchi", "user-verdi"],
-      },
-      {
-        id: "msg-005",
-        channelId: "ch-001",
-        senderId: "user-verdi",
-        content: "Nuova normativa su restrizione prelievo idrico disponibile nel Regulatory Radar.",
-        timestamp: date("2026-07-15T10:00:00+02:00"),
-        readBy: ["user-verdi"],
-      },
-    ],
-  });
-
-  await prisma.farmBenchmark.createMany({
-    data: [
-      { id: "benchmark-tondini-2026", farmId: farmIds.tondini, period: "2026", yieldPerHa: 7.4, costPerHa: 4620, waterEfficiency: 3.37, carbonPerHa: 0.29, overallScore: 77 },
-      { id: "benchmark-san-vittore-2026", farmId: farmIds.sanVittore, period: "2026", yieldPerHa: 8.1, costPerHa: 4950, waterEfficiency: 3.12, carbonPerHa: 0.27, overallScore: 82 },
-      { id: "benchmark-fratta-2026", farmId: farmIds.fratta, period: "2026", yieldPerHa: 6.3, costPerHa: 5380, waterEfficiency: 2.95, carbonPerHa: 0.34, overallScore: 57 },
-      { id: "benchmark-cabianca-2026", farmId: farmIds.caBianca, period: "2026", yieldPerHa: 7.9, costPerHa: 4180, waterEfficiency: 4.47, carbonPerHa: 0.22, overallScore: 88 },
-    ],
-  });
-
-  await prisma.yieldPrediction.createMany({
-    data: [
-      {
-        id: "yield-vcs-2026",
-        fieldId: fieldIds.vignaCollinaSud,
-        crop: "Sangiovese",
-        predictedYield: 8120,
-        confidenceLow: 7560,
-        confidenceHigh: 8680,
-        predictionDate: date("2026-05-13"),
-        factors: {
-          ndvi: 0.74,
-          soilMoisturePercent: 22.4,
-          gddProgressPercent: 82,
-          risks: ["Peronospora moderata"],
-        },
-      },
-      {
-        id: "yield-vae-2026",
-        fieldId: fieldIds.vignaArgineEst,
-        crop: "Albana",
-        predictedYield: 7450,
-        confidenceLow: 6900,
-        confidenceHigh: 8060,
-        predictionDate: date("2026-05-13"),
-        factors: {
-          ndvi: 0.61,
-          soilMoisturePercent: 19.4,
-          gddProgressPercent: 71,
-          risks: ["Oidio alto", "Stress idrico moderato"],
-        },
-      },
-      {
-        id: "yield-fsm-2026",
-        fieldId: fieldIds.fruttetoSanMamante,
-        crop: "Pesche",
-        predictedYield: 12100,
-        confidenceLow: 11400,
-        confidenceHigh: 12850,
-        predictionDate: date("2026-05-13"),
-        factors: {
-          ndvi: 0.68,
-          soilMoisturePercent: 26.2,
-          gddProgressPercent: 89,
-          risks: ["Monilia alta"],
-        },
-      },
-      {
-        id: "yield-svz-2026",
-        fieldId: fieldIds.seminativoZampeschi,
-        crop: "Grano tenero",
-        predictedYield: 6860,
-        confidenceLow: 6410,
-        confidenceHigh: 7240,
-        predictionDate: date("2026-05-13"),
-        factors: {
-          ndvi: 0.72,
-          soilMoisturePercent: 23.5,
-          gddProgressPercent: 86,
-          risks: ["Fusariosi moderata"],
-        },
-      },
-    ],
-  });
-
-  await prisma.regulatoryUpdate.createMany({
-    data: [
-      {
-        id: "reg-001",
-        title: "Nuovi limiti fitosanitari per rame in viticoltura biologica",
-        source: "eu_official_journal",
-        category: "fitosanitario",
-        publishDate: date("2025-06-28"),
-        effectiveDate: date("2026-01-01"),
-        summary: "Riduzione del limite massimo di rame da 4 kg/ha/anno a 3,5 kg/ha/anno per la viticoltura biologica.",
-        impact: "alto",
-        url: "https://example.com/reg-001",
-      },
-      {
-        id: "reg-002",
-        title: "Aggiornamento eco-schemi PAC 2025 — Emilia-Romagna",
-        source: "regione_emilia_romagna",
-        category: "PAC",
-        publishDate: date("2025-07-01"),
-        effectiveDate: date("2025-09-15"),
-        summary: "Aggiornati i criteri di ammissibilità per eco-schema 4 e 5 con premio aumentato a 150 €/ha.",
-        impact: "medio",
-        url: "https://example.com/reg-002",
-      },
-      {
-        id: "reg-003",
-        title: "Ordinanza restrizione prelievo idrico — Bacino Ronco-Montone",
-        source: "arpae",
-        category: "idrico",
-        publishDate: date("2025-07-10"),
-        effectiveDate: date("2025-07-15"),
-        summary: "Restrizione prelievo idrico del 30% per uso irriguo nel bacino Ronco-Montone.",
-        impact: "alto",
-        url: "https://example.com/reg-003",
-      },
-    ],
-  });
-
-  await prisma.simulationScenario.createMany({
-    data: [
-      {
-        id: "sim-001",
-        name: "Conversione Campo Nord: Pesche → Albana",
-        fieldId: fieldIds.fruttetoSanMamante,
-        type: "cambio_coltura",
-        parameters: {
-          fromCrop: "Pesche",
-          toCrop: "Albana DOCG",
-          irrigationShift: "4200->2800 m3/ha",
-        },
-        results: {
-          overallScore: 72,
-          projectedRevenuePerHa: 14600,
-          projectedWaterUsePerHa: 2850,
-          recommendation: "Procedere con fase pilota su 1/3 della superficie.",
-        },
-        createdAt: date("2025-06-20"),
-        createdBy: "user-tondini",
-      },
-      {
-        id: "sim-002",
-        name: "Irrigazione a goccia su Vigneto Bertinoro",
-        fieldId: fieldIds.vignaCollinaSud,
-        type: "irrigazione",
-        parameters: {
-          fromMethod: "Aspersione 5500 m3/ha",
-          toMethod: "Goccia 3200 m3/ha",
-        },
-        results: {
-          overallScore: 81,
-          projectedYieldDeltaPercent: 2.8,
-          projectedWaterDeltaPercent: -40.9,
-          recommendation: "Investimento con payback stimato in 2.5 stagioni.",
-        },
-        createdAt: date("2025-06-25"),
-        createdBy: "user-rossi",
-      },
-      {
-        id: "sim-003",
-        name: "Gelata tardiva aprile — Seminativo Via Zampeschi",
-        fieldId: fieldIds.seminativoZampeschi,
-        type: "evento_meteo",
-        parameters: {
-          event: "Gelata -3C per 6h in spigatura",
-        },
-        results: {
-          overallScore: 35,
-          projectedYieldDeltaPercent: -38.2,
-          insuredCoverage: "70% delle perdite sotto soglia resa",
-          recommendation: "Valutare sistemi anti-gelo e verifica copertura assicurativa.",
-        },
-        createdAt: date("2025-07-01"),
-        createdBy: "user-bianchi",
-      },
-    ],
-  });
-
-  const [cooperatives, users, farms, fields, lots, devices] = await Promise.all([
+  const [cooperatives, users, farms, fieldsCount, sensors, readingsCount] = await prisma.$transaction([
     prisma.cooperative.count(),
     prisma.user.count(),
     prisma.farm.count(),
     prisma.field.count(),
-    prisma.productLot.count(),
     prisma.sensorDevice.count(),
+    prisma.sensorReading.count(),
   ]);
 
-  console.log(`Seeded ${cooperatives} cooperative, ${users} users, ${farms} farms, ${fields} fields, ${lots} product lots, ${devices} sensors.`);
+  console.log(`Seeded ${cooperatives} cooperatives, ${users} users, ${farms} farms, ${fieldsCount} fields, ${sensors} sensors and ${readingsCount} IoT readings.`);
 }
 
 seed()
   .catch((error) => {
-    console.error(error);
-    process.exit(1);
+    console.error("Error seeding agri-romagna demo data", error);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

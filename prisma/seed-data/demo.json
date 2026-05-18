@@ -1,0 +1,156 @@
+{
+  "cooperatives": [
+    {
+      "id": "coop-vigne-romagna",
+      "name": "Cooperativa Vigne di Romagna",
+      "region": "Emilia-Romagna",
+      "province": "Forlì-Cesena",
+      "plan": "cooperativa_premium",
+      "memberCount": 5,
+      "adminUserId": "user-elena-bellini"
+    },
+    {
+      "id": "coop-terre-faentine",
+      "name": "Consorzio Terre Faentine Bio",
+      "region": "Emilia-Romagna",
+      "province": "Ravenna",
+      "plan": "bio_filiera",
+      "memberCount": 4,
+      "adminUserId": "user-giacomo-rossi"
+    },
+    {
+      "id": "coop-orto-adriatico",
+      "name": "Ortofrutta Adriatica Romagnola",
+      "region": "Emilia-Romagna",
+      "province": "Ravenna",
+      "plan": "filiera_ortofrutta",
+      "memberCount": 4,
+      "adminUserId": "user-paolo-rinaldi"
+    }
+  ],
+  "farms": [
+    {
+      "id": "farm-tondini",
+      "cooperativeId": "coop-vigne-romagna",
+      "name": "Azienda Agricola Tondini",
+      "location": "Bertinoro",
+      "province": "Forlì-Cesena",
+      "hectares": 17.8,
+      "specialty": "Vite romagnola, pesco e vendita diretta"
+    },
+    {
+      "id": "farm-san-vittore",
+      "cooperativeId": "coop-vigne-romagna",
+      "name": "Podere San Vittore",
+      "location": "Forlimpopoli",
+      "province": "Forlì-Cesena",
+      "hectares": 11.6,
+      "specialty": "Sangiovese collinare e olivicoltura premium"
+    },
+    {
+      "id": "farm-la-fratta",
+      "cooperativeId": "coop-vigne-romagna",
+      "name": "Tenuta La Fratta",
+      "location": "Cesena",
+      "province": "Forlì-Cesena",
+      "hectares": 16.2,
+      "specialty": "Pesche, pomodoro e filiera horeca"
+    },
+    {
+      "id": "farm-valle-savio",
+      "cooperativeId": "coop-vigne-romagna",
+      "name": "Azienda Valle del Savio",
+      "location": "Cesena",
+      "province": "Forlì-Cesena",
+      "hectares": 13.4,
+      "specialty": "Vite e pesco in agricoltura integrata"
+    },
+    {
+      "id": "farm-ca-bianca",
+      "cooperativeId": "coop-terre-faentine",
+      "name": "Azienda Cà Bianca",
+      "location": "Faenza",
+      "province": "Ravenna",
+      "hectares": 28.5,
+      "specialty": "Cereali, girasole ed erba medica bio"
+    },
+    {
+      "id": "farm-rio-del-solco",
+      "cooperativeId": "coop-terre-faentine",
+      "name": "Podere Rio del Solco",
+      "location": "Brisighella",
+      "province": "Ravenna",
+      "hectares": 18.3,
+      "specialty": "Olivo DOP, vite e foraggere rigenerative"
+    },
+    {
+      "id": "farm-fattoria-bidente",
+      "cooperativeId": "coop-terre-faentine",
+      "name": "Fattoria Bidente",
+      "location": "Meldola",
+      "province": "Forlì-Cesena",
+      "hectares": 15.7,
+      "specialty": "Olivo, girasole e medica per carbon farming"
+    },
+    {
+      "id": "farm-cascina-santerno",
+      "cooperativeId": "coop-orto-adriatico",
+      "name": "Cascina Santerno",
+      "location": "Lugo",
+      "province": "Ravenna",
+      "hectares": 24.8,
+      "specialty": "Mais, pomodoro e grano per trasformazione"
+    },
+    {
+      "id": "farm-pineta-verde",
+      "cooperativeId": "coop-orto-adriatico",
+      "name": "Società Agricola Pineta Verde",
+      "location": "Ravenna",
+      "province": "Ravenna",
+      "hectares": 19.1,
+      "specialty": "Pomodoro e mais con logistica fresco"
+    }
+  ],
+  "fields": [
+    {"id":"field-vigna-collina-sud","farmId":"farm-tondini","cooperativeId":"coop-vigne-romagna","name":"Vigna Collina Sud","crop":"Vite · Sangiovese","cropType":"vite","variety":"Sangiovese","municipality":"Bertinoro","areaHa":3.8,"status":"Invaiatura uniforme","health":"Chioma arieggiata, pressione fungina sotto controllo","irrigation":"A goccia con turnazione 48h e sonda VWC","notes":"Parcella premium per la linea riserva.","organic":true,"certifications":["Biologico","DOP Romagna Sangiovese"],"plantingDaysAgo":1450,"harvestInDays":35,"expectedVolume":31.5},
+    {"id":"field-vigna-argine-est","farmId":"farm-tondini","cooperativeId":"coop-vigne-romagna","name":"Vigna Argine Est","crop":"Vite · Albana","cropType":"vite","variety":"Albana","municipality":"Bertinoro","areaHa":2.4,"status":"Acini in accrescimento","health":"Grappoli omogenei e vigore medio-alto","irrigation":"Microirrigazione con sensori meteo","notes":"Filare ventoso con ottima escursione termica.","organic":true,"certifications":["Biologico","DOP Romagna Albana"],"plantingDaysAgo":1320,"harvestInDays":26,"expectedVolume":19.2},
+    {"id":"field-pesco-san-mamante","farmId":"farm-tondini","cooperativeId":"coop-vigne-romagna","name":"Pesche San Mamante","crop":"Pesco · Nettarina gialla","cropType":"pesco","variety":"Nettarina gialla","municipality":"Bertinoro","areaHa":2.1,"status":"Maturazione avanzata","health":"Calibro regolare e frutti ben colorati","irrigation":"A manichetta con fertirrigazione settimanale","notes":"Lotto destinato a GDO locale e casse premium.","organic":false,"certifications":["IGP Pesca e Nettarina di Romagna"],"plantingDaysAgo":980,"harvestInDays":12,"expectedVolume":17.6},
+    {"id":"field-grano-zampeschi","farmId":"farm-tondini","cooperativeId":"coop-vigne-romagna","name":"Grano Via Zampeschi","crop":"Grano tenero","cropType":"grano","variety":"Bologna","municipality":"Bertinoro","areaHa":4.6,"status":"Granigione completa","health":"Spighe ben riempite e basso allettamento","irrigation":"Non irrigato, supportato da monitoraggio meteo","notes":"Fornitura dedicata al molino partner.","organic":false,"certifications":["SQNPI"],"plantingDaysAgo":240,"harvestInDays":18,"expectedVolume":33.8},
+    {"id":"field-vigna-san-vittore","farmId":"farm-san-vittore","cooperativeId":"coop-vigne-romagna","name":"Vigna San Vittore","crop":"Vite · Sangiovese","cropType":"vite","variety":"Sangiovese","municipality":"Forlimpopoli","areaHa":3.3,"status":"Pre-invaiatura","health":"Foglia sana con buona omogeneità di grappolo","irrigation":"Microirrigazione di soccorso","notes":"Parcella usata per prove di canopy management.","organic":false,"certifications":["DOP Romagna Sangiovese"],"plantingDaysAgo":1680,"harvestInDays":33,"expectedVolume":25.4},
+    {"id":"field-oliveto-ronco","farmId":"farm-san-vittore","cooperativeId":"coop-vigne-romagna","name":"Oliveto Ronco","crop":"Olivo · Nostrana di Brisighella","cropType":"olivo","variety":"Nostrana di Brisighella","municipality":"Forlimpopoli","areaHa":2.8,"status":"Allegagione piena","health":"Pianta equilibrata e carica produttiva buona","irrigation":"Deficit irrigation controllata","notes":"Olive destinate a frangitura separata.","organic":true,"certifications":["Biologico","DOP Brisighella"],"plantingDaysAgo":2100,"harvestInDays":60,"expectedVolume":9.4},
+    {"id":"field-vigna-serra-alta","farmId":"farm-la-fratta","cooperativeId":"coop-vigne-romagna","name":"Vigna Serra Alta","crop":"Vite · Trebbiano","cropType":"vite","variety":"Trebbiano","municipality":"Cesena","areaHa":2.2,"status":"Acino chiuso","health":"Buona fertilità dei germogli","irrigation":"Goccia con bilancio idrico settimanale","notes":"Vino base per blend cooperativo.","organic":false,"certifications":["DOP Romagna Trebbiano"],"plantingDaysAgo":1540,"harvestInDays":30,"expectedVolume":17.1},
+    {"id":"field-pesco-fratta","farmId":"farm-la-fratta","cooperativeId":"coop-vigne-romagna","name":"Pesche Malagola","crop":"Pesco · Pesca gialla","cropType":"pesco","variety":"Pesca gialla","municipality":"Cesena","areaHa":3.1,"status":"Raccolta scalare in corso","health":"Frutto uniforme con bassa scottatura","irrigation":"A goccia con ali autocompensanti","notes":"Parte del raccolto è già prenotata da gastronomie locali.","organic":false,"certifications":["IGP Pesca e Nettarina di Romagna"],"plantingDaysAgo":1120,"harvestInDays":8,"expectedVolume":23.7},
+    {"id":"field-pomodoro-malagola","farmId":"farm-la-fratta","cooperativeId":"coop-vigne-romagna","name":"Pomodoro Malagola","crop":"Pomodoro da industria","cropType":"pomodoro","variety":"Heinz 3402","municipality":"Cesena","areaHa":4.2,"status":"Fioritura del secondo palco","health":"Copertura omogenea e allegagione sopra target","irrigation":"Subirrigazione con tre turni settimanali","notes":"Campo seguito con modelli Tuta absoluta.","organic":false,"certifications":["Filiera controllata pomodoro Romagna"],"plantingDaysAgo":78,"harvestInDays":48,"expectedVolume":41.5},
+    {"id":"field-erba-medica-ca-bianca","farmId":"farm-ca-bianca","cooperativeId":"coop-terre-faentine","name":"Medica Ovest Cà Bianca","crop":"Erba medica","cropType":"erba_medica","variety":"Luzelle","municipality":"Faenza","areaHa":6.4,"status":"Ricaccio post sfalcio","health":"Cotico fitto e ottima copertura del suolo","irrigation":"Rotolone leggero dopo ogni taglio","notes":"Foraggera bio destinata a zootecnia di collina.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":620,"harvestInDays":15,"expectedVolume":34.2},
+    {"id":"field-grano-ca-bianca","farmId":"farm-ca-bianca","cooperativeId":"coop-terre-faentine","name":"Grano Nuovo Cà Bianca","crop":"Grano duro","cropType":"grano","variety":"Marco Aurelio","municipality":"Faenza","areaHa":8.9,"status":"Maturazione cerosa","health":"Stand uniforme con tenore proteico alto","irrigation":"Asciutta, monitoraggio stress con NDVI","notes":"Contratto di filiera per semola artigianale.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":252,"harvestInDays":20,"expectedVolume":59.1},
+    {"id":"field-girasole-ca-bianca","farmId":"farm-ca-bianca","cooperativeId":"coop-terre-faentine","name":"Girasole Podere Nord","crop":"Girasole alto oleico","cropType":"girasole","variety":"SY Experto","municipality":"Faenza","areaHa":5.5,"status":"Bottone fiorale","health":"Ottimo accestimento e bassa pressione infestanti","irrigation":"Un solo turno di soccorso programmato","notes":"Appezzamento monitorato per efficienza idrica.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":95,"harvestInDays":55,"expectedVolume":20.8},
+    {"id":"field-oliveto-rio","farmId":"farm-rio-del-solco","cooperativeId":"coop-terre-faentine","name":"Oliveto Rio del Solco","crop":"Olivo · Nostrana di Brisighella","cropType":"olivo","variety":"Nostrana di Brisighella","municipality":"Brisighella","areaHa":4.1,"status":"Accrescimento drupe","health":"Buona alternanza contenuta con potatura mirata","irrigation":"Goccia di supporto con turni da 36h","notes":"Olio destinato a lotto certificato DOP.","organic":true,"certifications":["Biologico","DOP Brisighella"],"plantingDaysAgo":2400,"harvestInDays":62,"expectedVolume":12.7},
+    {"id":"field-vigna-rio","farmId":"farm-rio-del-solco","cooperativeId":"coop-terre-faentine","name":"Vigna Rio Alto","crop":"Vite · Sangiovese","cropType":"vite","variety":"Sangiovese","municipality":"Brisighella","areaHa":3.6,"status":"Pre-chiusura grappolo","health":"Foglia molto sana e bilanciamento ottimo","irrigation":"Goccia con sensore tensiometrico","notes":"Vigneto sperimentale per gestione rigenerativa dell'interfila.","organic":true,"certifications":["Biologico","DOP Romagna Sangiovese"],"plantingDaysAgo":1840,"harvestInDays":38,"expectedVolume":27.6},
+    {"id":"field-erba-medica-rio","farmId":"farm-rio-del-solco","cooperativeId":"coop-terre-faentine","name":"Medica Rio Basso","crop":"Erba medica","cropType":"erba_medica","variety":"Artemide","municipality":"Brisighella","areaHa":4.7,"status":"Secondo ricaccio","health":"Tappeto fitto e ottimo contenuto proteico","irrigation":"A pioggia leggera post taglio","notes":"Misurata per progetti di sequestro carbonio.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":540,"harvestInDays":14,"expectedVolume":26.4},
+    {"id":"field-mais-santerno","farmId":"farm-cascina-santerno","cooperativeId":"coop-orto-adriatico","name":"Mais Santerno Ovest","crop":"Mais da granella","cropType":"mais","variety":"P0937","municipality":"Lugo","areaHa":7.8,"status":"8 foglie vere","health":"Emergenza regolare e vigore elevato","irrigation":"Pivot con turni da 14 mm ogni 5 giorni","notes":"Appezzamento chiave per il bilancio idrico.","organic":false,"certifications":["Filiera mangimistica tracciata"],"plantingDaysAgo":68,"harvestInDays":70,"expectedVolume":64.2},
+    {"id":"field-pomodoro-santerno","farmId":"farm-cascina-santerno","cooperativeId":"coop-orto-adriatico","name":"Pomodoro Santerno Sud","crop":"Pomodoro da industria","cropType":"pomodoro","variety":"UGX 329","municipality":"Lugo","areaHa":6.2,"status":"Allegagione regolare","health":"Parete fogliare chiusa e uniforme","irrigation":"Subirrigazione con controllo remoto elettrovalvole","notes":"Conferimento già programmato con stabilimento partner.","organic":false,"certifications":["Filiera controllata pomodoro Romagna"],"plantingDaysAgo":82,"harvestInDays":46,"expectedVolume":58.7},
+    {"id":"field-grano-santerno","farmId":"farm-cascina-santerno","cooperativeId":"coop-orto-adriatico","name":"Grano Santerno Est","crop":"Grano tenero","cropType":"grano","variety":"Bramante","municipality":"Lugo","areaHa":5.1,"status":"Pronto alla raccolta","health":"Spiga piena con umidità granella in discesa","irrigation":"Asciutta con supporto dati meteo cooperativi","notes":"Grano destinato a forno artigianale.","organic":false,"certifications":["Filiera cerealicola Romagna"],"plantingDaysAgo":238,"harvestInDays":10,"expectedVolume":36.9},
+    {"id":"field-vite-savio","farmId":"farm-valle-savio","cooperativeId":"coop-vigne-romagna","name":"Vigna Savio Alta","crop":"Vite · Merlot","cropType":"vite","variety":"Merlot","municipality":"Cesena","areaHa":2.9,"status":"Grappolo chiuso","health":"Ottima uniformità tra filari","irrigation":"Goccia con controllo tensiometrico","notes":"Partita per blend export e degustazioni.","organic":false,"certifications":["DOP Romagna Merlot"],"plantingDaysAgo":1420,"harvestInDays":32,"expectedVolume":21.8},
+    {"id":"field-pesco-savio","farmId":"farm-valle-savio","cooperativeId":"coop-vigne-romagna","name":"Pesco Savio Basso","crop":"Pesco · Nettarina bianca","cropType":"pesco","variety":"Nettarina bianca","municipality":"Cesena","areaHa":2.5,"status":"Invaiatura frutti","health":"Frutti sani con basso scarto alla selezione","irrigation":"Ali gocciolanti in doppia linea","notes":"Raccolta dedicata a ordini marketplace B2C.","organic":false,"certifications":["IGP Pesca e Nettarina di Romagna"],"plantingDaysAgo":900,"harvestInDays":9,"expectedVolume":18.3},
+    {"id":"field-mais-pineta","farmId":"farm-pineta-verde","cooperativeId":"coop-orto-adriatico","name":"Mais Pineta Nord","crop":"Mais ceroso","cropType":"mais","variety":"MAS 24M","municipality":"Ravenna","areaHa":5.6,"status":"Levata regolare","health":"Buona copertura e stress salino contenuto","irrigation":"Pivot corto con sensori di salinità","notes":"Appezzamento costiero sotto monitoraggio vento e salsedine.","organic":false,"certifications":["Filiera zootecnica certificata"],"plantingDaysAgo":66,"harvestInDays":72,"expectedVolume":42.1},
+    {"id":"field-pomodoro-pineta","farmId":"farm-pineta-verde","cooperativeId":"coop-orto-adriatico","name":"Pomodoro Lido Mezzano","crop":"Pomodoro da industria","cropType":"pomodoro","variety":"HMX 7885","municipality":"Ravenna","areaHa":6.8,"status":"Allegagione del terzo palco","health":"Vigore molto alto con allegagione sopra media","irrigation":"Subirrigazione e manichetta di emergenza","notes":"Campo guida per forecasting produzione e logistica.","organic":false,"certifications":["Filiera controllata pomodoro Romagna"],"plantingDaysAgo":80,"harvestInDays":44,"expectedVolume":63.9},
+    {"id":"field-olivo-bidente","farmId":"farm-fattoria-bidente","cooperativeId":"coop-terre-faentine","name":"Oliveto Bidente Collina","crop":"Olivo · Leccino","cropType":"olivo","variety":"Leccino","municipality":"Meldola","areaHa":2.9,"status":"Accrescimento drupe","health":"Foglia sana e buona differenziazione delle branche","irrigation":"Solo soccorso estivo nei punti più declivi","notes":"Olio destinato a blend con frantoio sociale.","organic":true,"certifications":["Biologico","DOP Brisighella"],"plantingDaysAgo":1880,"harvestInDays":58,"expectedVolume":8.9},
+    {"id":"field-girasole-bidente","farmId":"farm-fattoria-bidente","cooperativeId":"coop-terre-faentine","name":"Girasole Bidente Sud","crop":"Girasole alto oleico","cropType":"girasole","variety":"P64HE118","municipality":"Meldola","areaHa":4.1,"status":"Fioritura imminente","health":"Capolini uniformi e buona competitività verso infestanti","irrigation":"Asciutta con un intervento di soccorso programmato","notes":"Inserito nel piano crediti carbonio per rotazioni migliorative.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":97,"harvestInDays":57,"expectedVolume":15.7},
+    {"id":"field-medica-bidente","farmId":"farm-fattoria-bidente","cooperativeId":"coop-terre-faentine","name":"Medica Bidente Piana","crop":"Erba medica","cropType":"erba_medica","variety":"Gamma","municipality":"Meldola","areaHa":3.8,"status":"Primo ricaccio","health":"Cotico fitto e buona attività radicale","irrigation":"A pioggia dopo sfalcio con sensori umidità","notes":"Campo usato come benchmark ESG per sequestro carbonio.","organic":true,"certifications":["Biologico"],"plantingDaysAgo":510,"harvestInDays":13,"expectedVolume":21.3}
+  ],
+  "users": [
+    {"id":"user-superadmin","email":"superadmin@agriromagna.demo","name":"Giulia Fabbri","role":"superadmin","phone":"+393331010101","avatarInitials":"GF"},
+    {"id":"user-elena-bellini","email":"elena.bellini@vignediromagna.it","name":"Elena Bellini","role":"cooperative_admin","cooperativeId":"coop-vigne-romagna","phone":"+393331010102","avatarInitials":"EB"},
+    {"id":"user-marco-tondini","email":"marco.tondini@tondini.it","name":"Marco Tondini","role":"farm_manager","cooperativeId":"coop-vigne-romagna","farmId":"farm-tondini","phone":"+393331010103","avatarInitials":"MT"},
+    {"id":"user-lucia-giorgi","email":"lucia.giorgi@agriromagna.demo","name":"Lucia Giorgi","role":"agronomist","cooperativeId":"coop-vigne-romagna","phone":"+393331010104","avatarInitials":"LG"},
+    {"id":"user-simone-verdi","email":"simone.verdi@agriromagna.demo","name":"Simone Verdi","role":"viewer","cooperativeId":"coop-vigne-romagna","phone":"+393331010105","avatarInitials":"SV"},
+    {"id":"user-giacomo-rossi","email":"giacomo.rossi@terrefaentine.it","name":"Giacomo Rossi","role":"cooperative_admin","cooperativeId":"coop-terre-faentine","phone":"+393331010106","avatarInitials":"GR"},
+    {"id":"user-sara-monti","email":"sara.monti@ca-bianca.it","name":"Sara Monti","role":"farm_manager","cooperativeId":"coop-terre-faentine","farmId":"farm-ca-bianca","phone":"+393331010107","avatarInitials":"SM"},
+    {"id":"user-marta-neri","email":"marta.neri@agriromagna.demo","name":"Marta Neri","role":"viewer","cooperativeId":"coop-terre-faentine","phone":"+393331010108","avatarInitials":"MN"},
+    {"id":"user-paolo-rinaldi","email":"paolo.rinaldi@orto-adriatico.it","name":"Paolo Rinaldi","role":"cooperative_admin","cooperativeId":"coop-orto-adriatico","phone":"+393331010109","avatarInitials":"PR"},
+    {"id":"user-anna-bassi","email":"anna.bassi@pineta-verde.it","name":"Anna Bassi","role":"farm_manager","cooperativeId":"coop-orto-adriatico","farmId":"farm-pineta-verde","phone":"+393331010110","avatarInitials":"AB"},
+    {"id":"user-davide-costa","email":"davide.costa@agriromagna.demo","name":"Davide Costa","role":"buyer","phone":"+393331010111","avatarInitials":"DC"},
+    {"id":"user-chiara-romani","email":"chiara.romani@agriromagna.demo","name":"Chiara Romani","role":"buyer","phone":"+393331010112","avatarInitials":"CR"},
+    {"id":"user-lorenzo-ferri","email":"lorenzo.ferri@agriromagna.demo","name":"Lorenzo Ferri","role":"viewer","cooperativeId":"coop-orto-adriatico","phone":"+393331010113","avatarInitials":"LF"}
+  ]
+}
