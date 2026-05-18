@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { Plus, X, Edit3, Trash2 } from "lucide-react";
 import { trapFocus, focusFirstElement } from "@/lib/focus-management";
+import { cn } from "@/lib/utils";
 
 interface FormField {
   name: string;
@@ -12,6 +13,8 @@ interface FormField {
   placeholder?: string;
   options?: { value: string; label: string }[];
   defaultValue?: string | number;
+  /** Custom validation function – return an error string or undefined */
+  validate?: (value: string | number) => string | undefined;
 }
 
 interface CrudDialogProps {
@@ -35,6 +38,7 @@ export function CrudDialog({
 }: CrudDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -81,17 +85,42 @@ export function CrudDialog({
     e.preventDefault();
     setLoading(true);
     setError(null);
-    try {
-      const formData = new FormData(e.currentTarget);
-      const data: Record<string, string | number> = {};
-      for (const field of fields) {
-        const raw = formData.get(field.name);
-        if (field.type === "number") {
-          data[field.name] = Number(raw);
-        } else {
-          data[field.name] = String(raw ?? "");
-        }
+
+    // Per-field validation
+    const formData = new FormData(e.currentTarget);
+    const data: Record<string, string | number> = {};
+    const nextFieldErrors: Record<string, string> = {};
+
+    for (const field of fields) {
+      const raw = formData.get(field.name);
+      if (field.type === "number") {
+        data[field.name] = Number(raw);
+      } else {
+        data[field.name] = String(raw ?? "");
       }
+
+      // Required check
+      if (field.required && !String(raw ?? "").trim()) {
+        nextFieldErrors[field.name] = `${field.label} è obbligatorio.`;
+        continue;
+      }
+
+      // Custom validation
+      if (field.validate) {
+        const err = field.validate(data[field.name]);
+        if (err) nextFieldErrors[field.name] = err;
+      }
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setLoading(false);
+      return;
+    }
+
+    setFieldErrors({});
+
+    try {
       await onSubmit(data);
       onClose();
     } catch (err) {
@@ -128,19 +157,28 @@ export function CrudDialog({
           </div>
         )}
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" aria-describedby={error ? "crud-dialog-error" : undefined}>
-          {fields.map((field) => (
+          {fields.map((field) => {
+            const errorId = `crud-${field.name}-error`;
+            const hasError = Boolean(fieldErrors[field.name]);
+            const fieldDescribedBy = hasError ? errorId : undefined;
+            const errorBorderClass = hasError ? "border-rose-300 dark:border-rose-500" : "border-emerald-950/10 dark:border-emerald-50/10";
+
+            return (
             <div key={field.name}>
               <label htmlFor={`crud-${field.name}`} className="block text-sm font-medium text-emerald-950/75 dark:text-emerald-100/75">
                 {field.label}
-                {field.required && <span className="ml-1 text-rose-500">*</span>}
+                {field.required && <span className="ml-1 text-rose-500" aria-hidden="true">*</span>}
+                {field.required && <span className="sr-only"> (obbligatorio)</span>}
               </label>
               {field.type === "select" ? (
                 <select
                   id={`crud-${field.name}`}
                   name={field.name}
                   required={field.required}
+                  aria-invalid={hasError || undefined}
+                  aria-describedby={fieldDescribedBy}
                   defaultValue={initialValues?.[field.name] ?? field.defaultValue ?? ""}
-                  className="mt-1 w-full rounded-xl border border-emerald-950/10 bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:border-emerald-50/10 dark:bg-[#0c1a12] dark:text-emerald-50"
+                  className={cn("mt-1 w-full rounded-xl border bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:bg-[#0c1a12] dark:text-emerald-50", errorBorderClass)}
                 >
                   <option value="">Seleziona…</option>
                   {field.options?.map((opt) => (
@@ -153,9 +191,11 @@ export function CrudDialog({
                   name={field.name}
                   required={field.required}
                   placeholder={field.placeholder}
+                  aria-invalid={hasError || undefined}
+                  aria-describedby={fieldDescribedBy}
                   defaultValue={initialValues?.[field.name] ?? field.defaultValue ?? ""}
                   rows={3}
-                  className="mt-1 w-full rounded-xl border border-emerald-950/10 bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:border-emerald-50/10 dark:bg-[#0c1a12] dark:text-emerald-50"
+                  className={cn("mt-1 w-full rounded-xl border bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:bg-[#0c1a12] dark:text-emerald-50", errorBorderClass)}
                 />
               ) : (
                 <input
@@ -164,13 +204,21 @@ export function CrudDialog({
                   name={field.name}
                   required={field.required}
                   placeholder={field.placeholder}
+                  aria-invalid={hasError || undefined}
+                  aria-describedby={fieldDescribedBy}
                   defaultValue={initialValues?.[field.name] ?? field.defaultValue ?? ""}
                   step={field.type === "number" ? "any" : undefined}
-                  className="mt-1 w-full rounded-xl border border-emerald-950/10 bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:border-emerald-50/10 dark:bg-[#0c1a12] dark:text-emerald-50"
+                  className={cn("mt-1 w-full rounded-xl border bg-[#f7f4ec] px-3 py-2 text-sm text-emerald-950 dark:bg-[#0c1a12] dark:text-emerald-50", errorBorderClass)}
                 />
               )}
+              {hasError && (
+                <p id={errorId} className="mt-1.5 text-sm text-rose-600 dark:text-rose-400" role="alert">
+                  {fieldErrors[field.name]}
+                </p>
+              )}
             </div>
-          ))}
+            );
+          })}
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
