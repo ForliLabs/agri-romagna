@@ -8,7 +8,7 @@ A comprehensive Next.js platform for Italian agricultural cooperatives — manag
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748)](https://prisma.io/)
 [![Tests](https://img.shields.io/badge/tests-passing-green)]()
-[![License](https://img.shields.io/badge/license-private-red)]()
+[![Repository](https://img.shields.io/badge/repo-public-brightgreen)](https://github.com/ForliLabs/agri-romagna)
 
 ---
 
@@ -220,4 +220,4 @@ npm run test:coverage
 
 ## License
 
-Private — All rights reserved.
+Source code is publicly available. No open-source license has been selected yet.
