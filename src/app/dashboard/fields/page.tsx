@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Radio, Satellite, Sprout, Trees } from "lucide-react";
 import { StatCard } from "@/components/dashboard";
 import { FieldMapPreview } from "@/components/field-map-preview";
 import { fields, weatherData } from "@/lib/data";
 import { fieldOperationalPriorities, iotAreaHealth } from "@/lib/operations-insights";
+import { DataTable, type Column } from "@/components/data-table";
+import { EmptyState } from "@/components/ui/states";
 import { FieldsCrud } from "./crud";
 
 const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -13,6 +17,66 @@ const fullDateFormatter = new Intl.DateTimeFormat("it-IT", {
 });
 
 const priorityLookup = new Map(fieldOperationalPriorities.map((item) => [item.fieldId, item]));
+
+type FieldRow = {
+  id: string;
+  name: string;
+  crop: string;
+  areaHa: number;
+  status: string;
+  expectedHarvest: string;
+  priorityTitle: string;
+  priorityDue: string;
+  [key: string]: unknown;
+};
+
+const fieldColumns: Column<FieldRow>[] = [
+  {
+    key: "name",
+    header: "Campo",
+    sortable: true,
+    primary: true,
+    render: (row) => (
+      <Link href={`/dashboard/fields/${row.id}`} className="font-semibold text-emerald-950 hover:text-emerald-700 hover:underline">
+        {row.name}
+      </Link>
+    ),
+  },
+  { key: "crop", header: "Coltura", sortable: true },
+  {
+    key: "areaHa",
+    header: "Area (ha)",
+    sortable: true,
+    getValue: (row) => row.areaHa,
+    render: (row) => row.areaHa.toLocaleString("it-IT"),
+  },
+  {
+    key: "status",
+    header: "Stato",
+    render: (row) => (
+      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+        {row.status}
+      </span>
+    ),
+  },
+  {
+    key: "expectedHarvest",
+    header: "Raccolta stimata",
+    sortable: true,
+    render: (row) => fullDateFormatter.format(new Date(row.expectedHarvest)),
+  },
+  {
+    key: "priorityTitle",
+    header: "Prossima azione",
+    hideOnMobile: true,
+    render: (row) => (
+      <div>
+        <p className="font-semibold text-emerald-950">{row.priorityTitle}</p>
+        <p className="mt-1 text-xs text-emerald-950/55">{row.priorityDue}</p>
+      </div>
+    ),
+  },
+];
 
 export default function FieldsPage() {
   const now = new Date(weatherData.current.observedAt);
@@ -58,7 +122,7 @@ export default function FieldsPage() {
         <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
-              <CalendarClock className="h-6 w-6" />
+              <CalendarClock className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Priorità di oggi</h2>
@@ -117,7 +181,7 @@ export default function FieldsPage() {
         <article className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-sm shadow-emerald-950/5">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
-              <Satellite className="h-6 w-6" />
+              <Satellite className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-emerald-950">Overlay e contesto di campo</h2>
@@ -130,66 +194,51 @@ export default function FieldsPage() {
         </article>
       </section>
 
-      <section className="overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 shadow-sm shadow-emerald-950/5">
-        <div className="border-b border-emerald-950/10 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
-              <Trees className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-emerald-950">Elenco campi</h2>
-              <p className="text-sm text-emerald-950/65">Nome, coltura, superficie, stato e prossimo passo condiviso con i moduli operativi</p>
-            </div>
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
+            <Trees className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-emerald-950">Elenco campi</h2>
+            <p className="text-sm text-emerald-950/65">Nome, coltura, superficie, stato e prossimo passo condiviso con i moduli operativi</p>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-emerald-950/10 text-left text-sm">
-            <thead className="bg-[#f7f4ec] text-emerald-950/65">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Campo</th>
-                <th className="px-6 py-4 font-semibold">Coltura</th>
-                <th className="px-6 py-4 font-semibold">Area (ha)</th>
-                <th className="px-6 py-4 font-semibold">Stato</th>
-                <th className="px-6 py-4 font-semibold">Raccolta stimata</th>
-                <th className="px-6 py-4 font-semibold">Prossima azione</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-950/10 bg-white">
-              {fields.map((field) => {
-                const priority = priorityLookup.get(field.id);
-                return (
-                  <tr key={field.id}>
-                    <td className="px-6 py-4 font-semibold text-emerald-950">
-                      <Link href={`/dashboard/fields/${field.id}`} className="hover:text-emerald-700 hover:underline">
-                        {field.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 text-emerald-950/75">{field.crop}</td>
-                    <td className="px-6 py-4 text-emerald-950/75">{field.areaHa.toLocaleString("it-IT")}</td>
-                    <td className="px-6 py-4">
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                        {field.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-emerald-950/75">
-                      {fullDateFormatter.format(new Date(field.expectedHarvest))}
-                    </td>
-                    <td className="px-6 py-4 text-emerald-950/75">
-                      <p className="font-semibold text-emerald-950">{priority?.title ?? "Monitoraggio di routine"}</p>
-                      <p className="mt-1 text-xs text-emerald-950/55">{priority?.dueLabel ?? "Settimanale"}</p>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {fields.length === 0 ? (
+          <EmptyState
+            title="Nessun campo registrato"
+            description="Aggiungi il primo appezzamento per iniziare a gestire il catasto operativo."
+            icon={<Trees className="h-7 w-7" aria-hidden="true" />}
+          />
+        ) : (
+          <DataTable<FieldRow>
+            columns={fieldColumns}
+            data={fields.map((field) => {
+              const priority = priorityLookup.get(field.id);
+              return {
+                id: field.id,
+                name: field.name,
+                crop: field.crop,
+                areaHa: field.areaHa,
+                status: field.status,
+                expectedHarvest: field.expectedHarvest,
+                priorityTitle: priority?.title ?? "Monitoraggio di routine",
+                priorityDue: priority?.dueLabel ?? "Settimanale",
+              };
+            })}
+            keyField="id"
+            searchable
+            searchPlaceholder="Cerca campo, coltura…"
+            caption="Elenco dei campi con coltura, superficie, stato e prossima azione"
+            emptyMessage="Nessun campo corrisponde alla ricerca."
+          />
+        )}
       </section>
 
       <section>
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-800">
-            <Sprout className="h-6 w-6" />
+            <Sprout className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-emerald-950">Schede di dettaglio</h2>
